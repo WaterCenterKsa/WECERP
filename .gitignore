@@ -1,0 +1,11 @@
+.vs/
+[Bb]in/
+[Oo]bj/
+TestResults/
+artifacts/
+*.user
+*.suo
+.env
+.env.*
+appsettings.Local.json
+appsettings.Development.json
