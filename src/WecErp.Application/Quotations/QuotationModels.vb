@@ -18,6 +18,10 @@ Namespace WecErp.Application.Quotations
         Public Property Lines As List(Of QuotationLineRequest) = New List(Of QuotationLineRequest)()
     End Class
 
+    Public Class ChangeQuotationStatusRequest
+        Public Property Status As String = String.Empty
+    End Class
+
     Public Class QuotationLineDto
         Public Property Id As Guid
         Public Property ItemId As Guid
