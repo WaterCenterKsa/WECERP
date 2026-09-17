@@ -15,6 +15,8 @@ Namespace WecErp.Infrastructure
         Public Property QuotationLines As DbSet(Of QuotationLine)
         Public Property SalesOrders As DbSet(Of SalesOrder)
         Public Property SalesOrderLines As DbSet(Of SalesOrderLine)
+        Public Property Resources As DbSet(Of Resource)
+        Public Property Bookings As DbSet(Of Booking)
 
         Protected Overrides Sub OnModelCreating(modelBuilder As ModelBuilder)
             MyBase.OnModelCreating(modelBuilder)
@@ -96,6 +98,29 @@ Namespace WecErp.Infrastructure
             salesOrderLine.Property(Function(x) x.LineTax).HasPrecision(19, 4)
             salesOrderLine.Property(Function(x) x.LineTotal).HasPrecision(19, 4)
             salesOrderLine.HasOne(Of Item)().WithMany().HasForeignKey(Function(x) x.ItemId).OnDelete(DeleteBehavior.Restrict)
+
+            Dim resource = modelBuilder.Entity(Of Resource)()
+            resource.ToTable("Resources")
+            resource.HasKey(Function(x) x.Id)
+            resource.Property(Function(x) x.Code).HasMaxLength(50).IsRequired()
+            resource.Property(Function(x) x.Name).HasMaxLength(200).IsRequired()
+            resource.Property(Function(x) x.Type).IsRequired()
+            resource.Property(Function(x) x.IsActive).IsRequired()
+            resource.HasIndex(Function(x) x.Code).IsUnique()
+
+            Dim booking = modelBuilder.Entity(Of Booking)()
+            booking.ToTable("Bookings")
+            booking.HasKey(Function(x) x.Id)
+            booking.Property(Function(x) x.Number).HasMaxLength(60).IsRequired()
+            booking.HasIndex(Function(x) x.Number).IsUnique()
+            booking.Property(Function(x) x.StartsUtc).IsRequired()
+            booking.Property(Function(x) x.EndsUtc).IsRequired()
+            booking.Property(Function(x) x.Notes).IsRequired()
+            booking.Property(Function(x) x.CreatedUtc).IsRequired()
+            booking.HasIndex(Function(x) New With {x.ResourceId, x.StartsUtc, x.EndsUtc})
+            booking.HasOne(Of Customer)().WithMany().HasForeignKey(Function(x) x.CustomerId).OnDelete(DeleteBehavior.Restrict)
+            booking.HasOne(Of Item)().WithMany().HasForeignKey(Function(x) x.ItemId).OnDelete(DeleteBehavior.Restrict)
+            booking.HasOne(Of Resource)().WithMany().HasForeignKey(Function(x) x.ResourceId).OnDelete(DeleteBehavior.Restrict)
         End Sub
     End Class
 End Namespace
