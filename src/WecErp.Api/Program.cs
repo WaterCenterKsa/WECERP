@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using WecErp.Application.Customers;
+using WecErp.Application.Items;
 using WecErp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,7 +10,8 @@ var connectionString = builder.Configuration.GetConnectionString("ErpDatabase")
 
 builder.Services.AddDbContext<ErpDbContext>(options =>
     options.UseSqlServer(connectionString));
-
+builder.Services.AddSingleton<CustomerService>();
+builder.Services.AddSingleton<ItemService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -30,6 +33,137 @@ app.MapGet("/api/v1/health/ready", async (ErpDbContext db, CancellationToken can
     return databaseReady
         ? Results.Ok(new { status = "ready", database = "connected" })
         : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+});
+
+app.MapGet("/api/v1/items", async (
+    ErpDbContext db,
+    int? page,
+    int? pageSize,
+    string? search,
+    CancellationToken cancellationToken) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var query = db.Items.AsNoTracking();
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var term = search.Trim();
+        query = query.Where(x => x.Sku.Contains(term) || x.Name.Contains(term));
+    }
+
+    var total = await query.CountAsync(cancellationToken);
+    var items = await query
+        .OrderBy(x => x.Name)
+        .ThenBy(x => x.Sku)
+        .Skip((currentPage - 1) * size)
+        .Take(size)
+        .Select(x => new ItemDto
+        {
+            Id = x.Id,
+            Sku = x.Sku,
+            Name = x.Name,
+            Type = x.Type,
+            IsActive = x.IsActive
+        })
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new
+    {
+        page = currentPage,
+        pageSize = size,
+        total,
+        items
+    });
+});
+
+app.MapPost("/api/v1/items", async (
+    CreateItemRequest request,
+    ItemService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var validationError = service.ValidateNewItem(request);
+    if (!string.IsNullOrEmpty(validationError))
+        return Results.BadRequest(new { error = validationError });
+
+    var sku = request.Sku.Trim();
+    var exists = await db.Items.AnyAsync(x => x.Sku == sku, cancellationToken);
+    if (exists)
+        return Results.Conflict(new { error = "An item with this SKU already exists." });
+
+    var item = service.CreateEntity(request);
+    db.Items.Add(item);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created($"/api/v1/items/{item.Id}", service.ToDto(item));
+});
+
+app.MapGet("/api/v1/customers", async (
+    ErpDbContext db,
+    int? page,
+    int? pageSize,
+    string? search,
+    CancellationToken cancellationToken) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var query = db.Customers.AsNoTracking().Where(x => x.IsActive);
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var term = search.Trim();
+        query = query.Where(x => x.Code.Contains(term) || x.Name.Contains(term) || x.Phone.Contains(term));
+    }
+
+    var total = await query.CountAsync(cancellationToken);
+    var customers = await query
+        .OrderBy(x => x.Name)
+        .ThenBy(x => x.Code)
+        .Skip((currentPage - 1) * size)
+        .Take(size)
+        .Select(x => new CustomerDto
+        {
+            Id = x.Id,
+            Code = x.Code,
+            Name = x.Name,
+            Phone = x.Phone,
+            Email = x.Email,
+            TaxNumber = x.TaxNumber,
+            IsActive = x.IsActive,
+            CreatedUtc = x.CreatedUtc
+        })
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new
+    {
+        page = currentPage,
+        pageSize = size,
+        total,
+        customers
+    });
+});
+
+app.MapPost("/api/v1/customers", async (
+    CreateCustomerRequest request,
+    CustomerService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var validationError = service.ValidateNewCustomer(request);
+    if (!string.IsNullOrEmpty(validationError))
+        return Results.BadRequest(new { error = validationError });
+
+    var code = request.Code.Trim();
+    var exists = await db.Customers.AnyAsync(x => x.Code == code, cancellationToken);
+    if (exists)
+        return Results.Conflict(new { error = "A customer with this code already exists." });
+
+    var customer = service.CreateEntity(request);
+    db.Customers.Add(customer);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created($"/api/v1/customers/{customer.Id}", service.ToDto(customer));
 });
 
 app.Run();
