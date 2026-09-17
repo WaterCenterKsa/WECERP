@@ -344,7 +344,7 @@ app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
     if (existingOrder is not null)
         return Results.Conflict(new { error = "This quotation has already been converted to a sales order.", salesOrderId = existingOrder.Id });
 
-    if (quotation.Status <> WecErp.Domain.QuotationStatus.Accepted)
+    if (quotation.Status != WecErp.Domain.QuotationStatus.Accepted)
         return Results.BadRequest(new { error = "Only accepted quotations can be converted to sales orders." });
 
     var order = service.CreateFromAcceptedQuotation(quotation);
