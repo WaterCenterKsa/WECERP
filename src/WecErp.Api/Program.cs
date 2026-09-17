@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
 using WecErp.Application.Quotations;
+using WecErp.Application.SalesOrders;
 using WecErp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<ErpDbContext>(options =>
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<QuotationService>();
+builder.Services.AddSingleton<SalesOrderService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -70,13 +72,7 @@ app.MapGet("/api/v1/items", async (
         })
         .ToListAsync(cancellationToken);
 
-    return Results.Ok(new
-    {
-        page = currentPage,
-        pageSize = size,
-        total,
-        items
-    });
+    return Results.Ok(new { page = currentPage, pageSize = size, total, items });
 });
 
 app.MapPost("/api/v1/items", async (
@@ -137,13 +133,7 @@ app.MapGet("/api/v1/customers", async (
         })
         .ToListAsync(cancellationToken);
 
-    return Results.Ok(new
-    {
-        page = currentPage,
-        pageSize = size,
-        total,
-        customers
-    });
+    return Results.Ok(new { page = currentPage, pageSize = size, total, customers });
 });
 
 app.MapPost("/api/v1/customers", async (
@@ -274,6 +264,95 @@ app.MapPost("/api/v1/quotations/{id:guid}/status", async (
 
     await db.SaveChangesAsync(cancellationToken);
     return Results.Ok(service.ToDto(quotation));
+});
+
+app.MapGet("/api/v1/sales-orders", async (
+    ErpDbContext db,
+    int? page,
+    int? pageSize,
+    string? search,
+    CancellationToken cancellationToken) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var query = db.SalesOrders.AsNoTracking();
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var term = search.Trim();
+        query = query.Where(x => x.Number.Contains(term));
+    }
+
+    var total = await query.CountAsync(cancellationToken);
+    var orders = await query
+        .OrderByDescending(x => x.CreatedUtc)
+        .Skip((currentPage - 1) * size)
+        .Take(size)
+        .Select(x => new
+        {
+            x.Id,
+            x.Number,
+            x.CustomerId,
+            x.SourceQuotationId,
+            x.Status,
+            x.CurrencyCode,
+            x.Subtotal,
+            x.DiscountAmount,
+            x.TaxAmount,
+            x.Total,
+            x.CreatedUtc
+        })
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new { page = currentPage, pageSize = size, total, salesOrders = orders });
+});
+
+app.MapGet("/api/v1/sales-orders/{id:guid}", async (
+    Guid id,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var order = await db.SalesOrders
+        .AsNoTracking()
+        .Include(x => x.Lines)
+        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    return order is null
+        ? Results.NotFound(new { error = "Sales order not found." })
+        : Results.Ok(order);
+});
+
+app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
+    Guid id,
+    SalesOrderService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+    var quotation = await db.Quotations
+        .Include(x => x.Lines)
+        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    if (quotation is null)
+        return Results.NotFound(new { error = "Quotation not found." });
+
+    var existingOrder = await db.SalesOrders
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.SourceQuotationId == quotation.Id, cancellationToken);
+
+    if (existingOrder is not null)
+        return Results.Conflict(new { error = "This quotation has already been converted to a sales order.", salesOrderId = existingOrder.Id });
+
+    if (quotation.Status <> WecErp.Domain.QuotationStatus.Accepted)
+        return Results.BadRequest(new { error = "Only accepted quotations can be converted to sales orders." });
+
+    var order = service.CreateFromAcceptedQuotation(quotation);
+    db.SalesOrders.Add(order);
+    await db.SaveChangesAsync(cancellationToken);
+    await transaction.CommitAsync(cancellationToken);
+
+    return Results.Created($"/api/v1/sales-orders/{order.Id}", service.ToDto(order));
 });
 
 app.Run();
