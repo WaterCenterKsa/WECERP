@@ -220,25 +220,28 @@ Public Class MainForm
     Private Sub PopulateTable(table As DataTable, json As String, endpoint As String)
         Using document = JsonDocument.Parse(json)
             Dim root = document.RootElement
-            Dim arrayProperty = If(endpoint = "/api/v1/bookings", "bookings", endpoint.Substring(8).Replace("/", String.Empty))
+            Dim arrayProperty As String
 
-            If Not root.TryGetProperty(arrayProperty, Nothing) Then
-                If endpoint = "/api/v1/items" AndAlso root.TryGetProperty("items", Nothing) Then
-                    arrayProperty = "items"
-                ElseIf endpoint = "/api/v1/customers" AndAlso root.TryGetProperty("customers", Nothing) Then
+            Select Case endpoint
+                Case "/api/v1/customers"
                     arrayProperty = "customers"
-                ElseIf endpoint = "/api/v1/quotations" AndAlso root.TryGetProperty("quotations", Nothing) Then
+                Case "/api/v1/items"
+                    arrayProperty = "items"
+                Case "/api/v1/quotations"
                     arrayProperty = "quotations"
-                ElseIf endpoint = "/api/v1/sales-orders" AndAlso root.TryGetProperty("salesOrders", Nothing) Then
+                Case "/api/v1/sales-orders"
                     arrayProperty = "salesOrders"
-                ElseIf endpoint = "/api/v1/resources" AndAlso root.TryGetProperty("resources", Nothing) Then
+                Case "/api/v1/resources"
                     arrayProperty = "resources"
-                Else
+                Case "/api/v1/bookings"
+                    arrayProperty = "bookings"
+                Case Else
                     Return
-                End If
-            End If
+            End Select
 
-            Dim records = root.GetProperty(arrayProperty)
+            Dim records As JsonElement
+            If Not root.TryGetProperty(arrayProperty, records) OrElse records.ValueKind <> JsonValueKind.Array Then Return
+
             For Each record In records.EnumerateArray()
                 Select Case endpoint
                     Case "/api/v1/customers"
