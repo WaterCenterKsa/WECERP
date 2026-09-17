@@ -11,6 +11,8 @@ Namespace WecErp.Infrastructure
 
         Public Property Items As DbSet(Of Item)
         Public Property Customers As DbSet(Of Customer)
+        Public Property Quotations As DbSet(Of Quotation)
+        Public Property QuotationLines As DbSet(Of QuotationLine)
 
         Protected Overrides Sub OnModelCreating(modelBuilder As ModelBuilder)
             MyBase.OnModelCreating(modelBuilder)
@@ -35,6 +37,33 @@ Namespace WecErp.Infrastructure
             customer.Property(Function(x) x.IsActive).IsRequired()
             customer.Property(Function(x) x.CreatedUtc).IsRequired()
             customer.HasIndex(Function(x) x.Code).IsUnique()
+
+            Dim quotation = modelBuilder.Entity(Of Quotation)()
+            quotation.ToTable("Quotations")
+            quotation.HasKey(Function(x) x.Id)
+            quotation.Property(Function(x) x.Number).HasMaxLength(60).IsRequired()
+            quotation.HasIndex(Function(x) x.Number).IsUnique()
+            quotation.Property(Function(x) x.CurrencyCode).HasMaxLength(3).IsRequired()
+            quotation.Property(Function(x) x.Subtotal).HasPrecision(19, 4)
+            quotation.Property(Function(x) x.DiscountAmount).HasPrecision(19, 4)
+            quotation.Property(Function(x) x.TaxAmount).HasPrecision(19, 4)
+            quotation.Property(Function(x) x.Total).HasPrecision(19, 4)
+            quotation.HasOne(Of Customer)().WithMany().HasForeignKey(Function(x) x.CustomerId).OnDelete(DeleteBehavior.Restrict)
+            quotation.HasMany(Function(x) x.Lines).WithOne().HasForeignKey(Function(x) x.QuotationId).OnDelete(DeleteBehavior.Cascade)
+
+            Dim quotationLine = modelBuilder.Entity(Of QuotationLine)()
+            quotationLine.ToTable("QuotationLines")
+            quotationLine.HasKey(Function(x) x.Id)
+            quotationLine.Property(Function(x) x.Description).HasMaxLength(500).IsRequired()
+            quotationLine.Property(Function(x) x.Quantity).HasPrecision(19, 4)
+            quotationLine.Property(Function(x) x.UnitPrice).HasPrecision(19, 4)
+            quotationLine.Property(Function(x) x.DiscountPercent).HasPrecision(9, 4)
+            quotationLine.Property(Function(x) x.TaxPercent).HasPrecision(9, 4)
+            quotationLine.Property(Function(x) x.LineSubtotal).HasPrecision(19, 4)
+            quotationLine.Property(Function(x) x.LineDiscount).HasPrecision(19, 4)
+            quotationLine.Property(Function(x) x.LineTax).HasPrecision(19, 4)
+            quotationLine.Property(Function(x) x.LineTotal).HasPrecision(19, 4)
+            quotationLine.HasOne(Of Item)().WithMany().HasForeignKey(Function(x) x.ItemId).OnDelete(DeleteBehavior.Restrict)
         End Sub
     End Class
 End Namespace
