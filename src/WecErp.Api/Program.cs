@@ -253,6 +253,28 @@ app.MapPost("/api/v1/quotations", async (
     return Results.Created($"/api/v1/quotations/{quotation.Id}", service.ToDto(quotation));
 });
 
+app.MapPost("/api/v1/quotations/{id:guid}/status", async (
+    Guid id,
+    ChangeQuotationStatusRequest request,
+    QuotationService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var quotation = await db.Quotations
+        .Include(x => x.Lines)
+        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    if (quotation is null)
+        return Results.NotFound(new { error = "Quotation not found." });
+
+    var changed = service.TryChangeStatus(quotation, request.Status, ByRef errorMessage);
+    if (!changed)
+        return Results.BadRequest(new { error = errorMessage });
+
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(service.ToDto(quotation));
+});
+
 app.Run();
 
 public partial class Program { }
