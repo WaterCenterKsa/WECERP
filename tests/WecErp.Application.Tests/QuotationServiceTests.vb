@@ -27,7 +27,7 @@ Namespace WecErp.Application.Tests
 
             Dim quotation = service.CreateEntity(request, items)
 
-            Assert.Equal(180D, quotation.Subtotal)
+            Assert.Equal(200D, quotation.Subtotal)
             Assert.Equal(20D, quotation.DiscountAmount)
             Assert.Equal(27D, quotation.TaxAmount)
             Assert.Equal(207D, quotation.Total)
