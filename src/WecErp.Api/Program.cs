@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
+using WecErp.Application.Quotations;
 using WecErp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,7 @@ builder.Services.AddDbContext<ErpDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ItemService>();
+builder.Services.AddSingleton<QuotationService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -164,6 +166,91 @@ app.MapPost("/api/v1/customers", async (
     await db.SaveChangesAsync(cancellationToken);
 
     return Results.Created($"/api/v1/customers/{customer.Id}", service.ToDto(customer));
+});
+
+app.MapGet("/api/v1/quotations", async (
+    ErpDbContext db,
+    int? page,
+    int? pageSize,
+    string? search,
+    CancellationToken cancellationToken) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var query = db.Quotations.AsNoTracking();
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var term = search.Trim();
+        query = query.Where(x => x.Number.Contains(term));
+    }
+
+    var total = await query.CountAsync(cancellationToken);
+    var quotations = await query
+        .OrderByDescending(x => x.CreatedUtc)
+        .Skip((currentPage - 1) * size)
+        .Take(size)
+        .Select(x => new
+        {
+            x.Id,
+            x.Number,
+            x.CustomerId,
+            x.Status,
+            x.CurrencyCode,
+            x.Subtotal,
+            x.DiscountAmount,
+            x.TaxAmount,
+            x.Total,
+            x.ValidUntil,
+            x.CreatedUtc
+        })
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new { page = currentPage, pageSize = size, total, quotations });
+});
+
+app.MapGet("/api/v1/quotations/{id:guid}", async (
+    Guid id,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var quotation = await db.Quotations
+        .AsNoTracking()
+        .Include(x => x.Lines)
+        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    return quotation is null
+        ? Results.NotFound(new { error = "Quotation not found." })
+        : Results.Ok(quotation);
+});
+
+app.MapPost("/api/v1/quotations", async (
+    CreateQuotationRequest request,
+    QuotationService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var validationError = service.ValidateNewQuotation(request);
+    if (!string.IsNullOrEmpty(validationError))
+        return Results.BadRequest(new { error = validationError });
+
+    var customerExists = await db.Customers.AnyAsync(x => x.Id == request.CustomerId && x.IsActive, cancellationToken);
+    if (!customerExists)
+        return Results.BadRequest(new { error = "Customer does not exist or is inactive." });
+
+    var itemIds = request.Lines.Select(x => x.ItemId).Distinct().ToList();
+    var items = await db.Items
+        .Where(x => itemIds.Contains(x.Id) && x.IsActive)
+        .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+    if (items.Count != itemIds.Count)
+        return Results.BadRequest(new { error = "One or more quotation items do not exist or are inactive." });
+
+    var quotation = service.CreateEntity(request, items);
+    db.Quotations.Add(quotation);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created($"/api/v1/quotations/{quotation.Id}", service.ToDto(quotation));
 });
 
 app.Run();
