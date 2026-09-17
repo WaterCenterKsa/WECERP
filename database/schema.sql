@@ -129,6 +129,42 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID(N'dbo.Resources', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Resources
+    (
+        Id uniqueidentifier NOT NULL CONSTRAINT PK_Resources PRIMARY KEY,
+        Code nvarchar(50) NOT NULL,
+        Name nvarchar(200) NOT NULL,
+        Type int NOT NULL,
+        IsActive bit NOT NULL CONSTRAINT DF_Resources_IsActive DEFAULT (1),
+        CONSTRAINT UQ_Resources_Code UNIQUE (Code)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.Bookings', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Bookings
+    (
+        Id uniqueidentifier NOT NULL CONSTRAINT PK_Bookings PRIMARY KEY,
+        Number nvarchar(60) NOT NULL,
+        CustomerId uniqueidentifier NOT NULL,
+        ItemId uniqueidentifier NOT NULL,
+        ResourceId uniqueidentifier NULL,
+        StartsUtc datetimeoffset(7) NOT NULL,
+        EndsUtc datetimeoffset(7) NOT NULL,
+        Status int NOT NULL,
+        Notes nvarchar(max) NOT NULL,
+        CreatedUtc datetimeoffset(7) NOT NULL CONSTRAINT DF_Bookings_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT UQ_Bookings_Number UNIQUE (Number),
+        CONSTRAINT FK_Bookings_Customers_CustomerId FOREIGN KEY (CustomerId) REFERENCES dbo.Customers (Id),
+        CONSTRAINT FK_Bookings_Items_ItemId FOREIGN KEY (ItemId) REFERENCES dbo.Items (Id),
+        CONSTRAINT FK_Bookings_Resources_ResourceId FOREIGN KEY (ResourceId) REFERENCES dbo.Resources (Id)
+    );
+END;
+GO
+
 -- Useful operational indexes for the current API queries.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Quotations_CreatedUtc' AND object_id = OBJECT_ID(N'dbo.Quotations'))
     CREATE INDEX IX_Quotations_CreatedUtc ON dbo.Quotations (CreatedUtc DESC);
@@ -136,4 +172,8 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SalesOrders_CreatedUtc' AND object_id = OBJECT_ID(N'dbo.SalesOrders'))
     CREATE INDEX IX_SalesOrders_CreatedUtc ON dbo.SalesOrders (CreatedUtc DESC);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Bookings_ResourceTime' AND object_id = OBJECT_ID(N'dbo.Bookings'))
+    CREATE INDEX IX_Bookings_ResourceTime ON dbo.Bookings (ResourceId, StartsUtc, EndsUtc);
 GO
