@@ -1,4 +1,3 @@
-Imports System.Globalization
 Imports WecErp.Domain
 
 Namespace WecErp.Application.Quotations
@@ -7,6 +6,7 @@ Namespace WecErp.Application.Quotations
             If request.CustomerId = Guid.Empty Then Return "CustomerId is required."
             If request.Lines Is Nothing OrElse request.Lines.Count = 0 Then Return "At least one quotation line is required."
             If String.IsNullOrWhiteSpace(request.CurrencyCode) Then Return "CurrencyCode is required."
+            If request.CurrencyCode.Trim().Length <> 3 Then Return "CurrencyCode must be a 3-letter ISO code."
             If request.ValidUntil.HasValue AndAlso request.ValidUntil.Value < DateTimeOffset.UtcNow Then Return "ValidUntil cannot be in the past."
 
             For Each line In request.Lines
@@ -18,6 +18,64 @@ Namespace WecErp.Application.Quotations
             Next
 
             Return String.Empty
+        End Function
+
+        Public Function TryChangeStatus(quotation As Quotation, requestedStatus As String, ByRef errorMessage As String) As Boolean
+            errorMessage = String.Empty
+
+            If quotation Is Nothing Then
+                errorMessage = "Quotation is required."
+                Return False
+            End If
+
+            If String.IsNullOrWhiteSpace(requestedStatus) Then
+                errorMessage = "Status is required."
+                Return False
+            End If
+
+            Dim targetStatus As QuotationStatus
+            If Not [Enum].TryParse(requestedStatus.Trim(), True, targetStatus) OrElse Not [Enum].IsDefined(GetType(QuotationStatus), targetStatus) Then
+                errorMessage = "Invalid quotation status."
+                Return False
+            End If
+
+            If quotation.Status = targetStatus Then
+                errorMessage = "Quotation is already in this status."
+                Return False
+            End If
+
+            Dim allowed As Boolean = False
+            Select Case quotation.Status
+                Case QuotationStatus.Draft
+                    allowed = targetStatus = QuotationStatus.Sent OrElse targetStatus = QuotationStatus.Cancelled
+                Case QuotationStatus.Sent
+                    allowed = targetStatus = QuotationStatus.Accepted OrElse
+                              targetStatus = QuotationStatus.Rejected OrElse
+                              targetStatus = QuotationStatus.Expired OrElse
+                              targetStatus = QuotationStatus.Cancelled
+            End Select
+
+            If Not allowed Then
+                errorMessage = $"Quotation cannot move from {quotation.Status} to {targetStatus}."
+                Return False
+            End If
+
+            If targetStatus = QuotationStatus.Sent OrElse targetStatus = QuotationStatus.Accepted Then
+                If quotation.ValidUntil.HasValue AndAlso quotation.ValidUntil.Value <= DateTimeOffset.UtcNow Then
+                    errorMessage = "Quotation has expired and cannot be sent or accepted."
+                    Return False
+                End If
+            End If
+
+            If targetStatus = QuotationStatus.Expired Then
+                If Not quotation.ValidUntil.HasValue OrElse quotation.ValidUntil.Value > DateTimeOffset.UtcNow Then
+                    errorMessage = "Quotation can only be marked Expired after its validity date has passed."
+                    Return False
+                End If
+            End If
+
+            quotation.Status = targetStatus
+            Return True
         End Function
 
         Public Function CreateEntity(request As CreateQuotationRequest, items As IReadOnlyDictionary(Of Guid, Item)) As Quotation
