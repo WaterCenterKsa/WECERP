@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
 using WecErp.Application.Quotations;
 using WecErp.Application.SalesOrders;
+using WecErp.Domain;
 using WecErp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,7 @@ builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<QuotationService>();
 builder.Services.AddSingleton<SalesOrderService>();
+builder.Services.AddSingleton<BookingService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -344,7 +347,7 @@ app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
     if (existingOrder is not null)
         return Results.Conflict(new { error = "This quotation has already been converted to a sales order.", salesOrderId = existingOrder.Id });
 
-    if (quotation.Status != WecErp.Domain.QuotationStatus.Accepted)
+    if (quotation.Status != QuotationStatus.Accepted)
         return Results.BadRequest(new { error = "Only accepted quotations can be converted to sales orders." });
 
     var order = service.CreateFromAcceptedQuotation(quotation);
@@ -353,6 +356,129 @@ app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
     await transaction.CommitAsync(cancellationToken);
 
     return Results.Created($"/api/v1/sales-orders/{order.Id}", service.ToDto(order));
+});
+
+app.MapGet("/api/v1/resources", async (
+    ErpDbContext db,
+    int? page,
+    int? pageSize,
+    string? search,
+    CancellationToken cancellationToken) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var query = db.Resources.AsNoTracking().Where(x => x.IsActive);
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var term = search.Trim();
+        query = query.Where(x => x.Code.Contains(term) || x.Name.Contains(term));
+    }
+
+    var total = await query.CountAsync(cancellationToken);
+    var resources = await query
+        .OrderBy(x => x.Name)
+        .ThenBy(x => x.Code)
+        .Skip((currentPage - 1) * size)
+        .Take(size)
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new { page = currentPage, pageSize = size, total, resources });
+});
+
+app.MapPost("/api/v1/resources", async (
+    Resource request,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    if (String.IsNullOrWhiteSpace(request.Code) || String.IsNullOrWhiteSpace(request.Name))
+        return Results.BadRequest(new { error = "Code and Name are required." });
+
+    var code = request.Code.Trim();
+    if (await db.Resources.AnyAsync(x => x.Code == code, cancellationToken))
+        return Results.Conflict(new { error = "A resource with this code already exists." });
+
+    var resource = new Resource
+    {
+        Id = Guid.NewGuid(),
+        Code = code,
+        Name = request.Name.Trim(),
+        Type = request.Type,
+        IsActive = true
+    };
+
+    db.Resources.Add(resource);
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Created($"/api/v1/resources/{resource.Id}", resource);
+});
+
+app.MapGet("/api/v1/bookings", async (
+    ErpDbContext db,
+    DateTimeOffset? fromUtc,
+    DateTimeOffset? toUtc,
+    Guid? resourceId,
+    CancellationToken cancellationToken) =>
+{
+    var query = db.Bookings.AsNoTracking();
+
+    if (fromUtc.HasValue)
+        query = query.Where(x => x.EndsUtc > fromUtc.Value);
+    if (toUtc.HasValue)
+        query = query.Where(x => x.StartsUtc < toUtc.Value);
+    if (resourceId.HasValue)
+        query = query.Where(x => x.ResourceId == resourceId.Value);
+
+    var bookings = await query
+        .OrderBy(x => x.StartsUtc)
+        .Take(500)
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new { bookings });
+});
+
+app.MapPost("/api/v1/bookings", async (
+    CreateBookingRequest request,
+    BookingService service,
+    ErpDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var validationError = service.ValidateNewBooking(request);
+    if (!String.IsNullOrEmpty(validationError))
+        return Results.BadRequest(new { error = validationError });
+
+    var customerExists = await db.Customers.AnyAsync(x => x.Id == request.CustomerId && x.IsActive, cancellationToken);
+    if (!customerExists)
+        return Results.BadRequest(new { error = "Customer does not exist or is inactive." });
+
+    var itemExists = await db.Items.AnyAsync(x => x.Id == request.ItemId && x.IsActive, cancellationToken);
+    if (!itemExists)
+        return Results.BadRequest(new { error = "Item does not exist or is inactive." });
+
+    if (request.ResourceId.HasValue)
+    {
+        var resourceExists = await db.Resources.AnyAsync(x => x.Id == request.ResourceId.Value && x.IsActive, cancellationToken);
+        if (!resourceExists)
+            return Results.BadRequest(new { error = "Resource does not exist or is inactive." });
+    }
+
+    if (request.ResourceId.HasValue)
+    {
+        var conflict = await db.Bookings.AnyAsync(x =>
+            x.ResourceId == request.ResourceId.Value &&
+            x.Status != BookingStatus.Cancelled &&
+            x.StartsUtc < request.EndsUtc &&
+            x.EndsUtc > request.StartsUtc,
+            cancellationToken);
+
+        if (conflict)
+            return Results.Conflict(new { error = "The selected resource is already booked during this time." });
+    }
+
+    var booking = service.CreateEntity(request);
+    db.Bookings.Add(booking);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created($"/api/v1/bookings/{booking.Id}", service.ToDto(booking));
 });
 
 app.Run();
