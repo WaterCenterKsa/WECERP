@@ -1,5 +1,7 @@
 Imports System.Data
 Imports System.Net.Http
+Imports System.Net.Http.Headers
+Imports System.Text
 Imports System.Text.Json
 Imports System.Threading.Tasks
 Imports System.Windows.Forms
@@ -9,6 +11,9 @@ Public Class MainForm
 
     Private ReadOnly apiUrlTextBox As New TextBox()
     Private ReadOnly connectionButton As New Button()
+    Private ReadOnly loginButton As New Button()
+    Private ReadOnly usernameTextBox As New TextBox()
+    Private ReadOnly passwordTextBox As New TextBox()
     Private ReadOnly statusLabel As New Label()
     Private ReadOnly navigationPanel As New FlowLayoutPanel()
     Private ReadOnly grid As New DataGridView()
@@ -43,15 +48,33 @@ Public Class MainForm
         titleLabel.Top = 12
 
         apiUrlTextBox.Left = 300
-        apiUrlTextBox.Top = 16
+        apiUrlTextBox.Top = 52
         apiUrlTextBox.Width = 500
         apiUrlTextBox.Text = "https://localhost:7001"
         apiUrlTextBox.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
 
+        usernameTextBox.Left = 300
+        usernameTextBox.Top = 16
+        usernameTextBox.Width = 160
+        usernameTextBox.PlaceholderText = "Username"
+
+        passwordTextBox.Left = 465
+        passwordTextBox.Top = 16
+        passwordTextBox.Width = 160
+        passwordTextBox.UseSystemPasswordChar = True
+        passwordTextBox.PlaceholderText = "Password"
+
+        loginButton.Text = "Login"
+        loginButton.Width = 90
+        loginButton.Height = 32
+        loginButton.Left = 630
+        loginButton.Top = 14
+        AddHandler loginButton.Click, AddressOf LoginAsync
+
         connectionButton.Text = "Check Server"
         connectionButton.Width = 130
         connectionButton.Height = 32
-        connectionButton.Left = 815
+        connectionButton.Left = 800
         connectionButton.Top = 14
         connectionButton.Anchor = AnchorStyles.Top Or AnchorStyles.Right
         AddHandler connectionButton.Click, AddressOf CheckServerAsync
@@ -65,6 +88,9 @@ Public Class MainForm
         statusLabel.Text = "Not checked"
 
         header.Controls.Add(titleLabel)
+        header.Controls.Add(usernameTextBox)
+        header.Controls.Add(passwordTextBox)
+        header.Controls.Add(loginButton)
         header.Controls.Add(apiUrlTextBox)
         header.Controls.Add(connectionButton)
         header.Controls.Add(statusLabel)
@@ -334,6 +360,52 @@ Public Class MainForm
         End If
         Return baseUrl
     End Function
+
+    Private Async Sub LoginAsync(sender As Object, e As EventArgs)
+        loginButton.Enabled = False
+        Try
+            Dim baseUrl = GetBaseUrl()
+            If String.IsNullOrWhiteSpace(usernameTextBox.Text) OrElse String.IsNullOrWhiteSpace(passwordTextBox.Text) Then
+                MessageBox.Show("Username and password are required.", "WEC ERP", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End If
+
+            Dim payload = JsonSerializer.Serialize(New With {
+                .userName = usernameTextBox.Text.Trim(),
+                .password = passwordTextBox.Text
+            })
+            Using request = New HttpRequestMessage(HttpMethod.Post, baseUrl & "/api/v1/auth/login")
+                request.Content = New StringContent(payload, Encoding.UTF8, "application/json")
+                Using response = Await httpClient.SendAsync(request)
+                    Dim body = Await response.Content.ReadAsStringAsync()
+                    If Not response.IsSuccessStatusCode Then
+                        statusLabel.Text = $"Login failed: HTTP {CInt(response.StatusCode)}"
+                        MessageBox.Show(body, "WEC ERP", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                        Return
+                    End If
+
+                    Using document = JsonDocument.Parse(body)
+                        Dim tokenElement As JsonElement
+                        If Not document.RootElement.TryGetProperty("accessToken", tokenElement) Then
+                            Throw New InvalidOperationException("Login response did not contain an access token.")
+                        End If
+                        Dim token = tokenElement.GetString()
+                        If String.IsNullOrWhiteSpace(token) Then Throw New InvalidOperationException("Login returned an empty access token.")
+                        httpClient.DefaultRequestHeaders.Authorization = New AuthenticationHeaderValue("Bearer", token)
+                    End Using
+
+                    statusLabel.Text = "Logged in successfully."
+                    passwordTextBox.Clear()
+                    ShowDashboard()
+                End Using
+            End Using
+        Catch ex As Exception
+            statusLabel.Text = "Login failed"
+            MessageBox.Show(ex.Message, "WEC ERP", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Finally
+            loginButton.Enabled = True
+        End Try
+    End Sub
 
     Private Async Sub CheckServerAsync(sender As Object, e As EventArgs)
         connectionButton.Enabled = False
