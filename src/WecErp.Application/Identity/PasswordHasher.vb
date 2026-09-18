@@ -10,9 +10,8 @@ Namespace WecErp.Application.Identity
             If String.IsNullOrEmpty(password) Then Throw New ArgumentException("Password is required.", NameOf(password))
             Dim salt(SaltSize - 1) As Byte
             RandomNumberGenerator.Fill(salt)
-            Using derive = New Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256)
-                Return $"PBKDF2-SHA256.{Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(derive.GetBytes(HashSize))}"
-            End Using
+            Dim hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, HashSize)
+            Return $"PBKDF2-SHA256.{Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}"
         End Function
 
         Public Function Verify(password As String, encoded As String) As Boolean
@@ -24,10 +23,8 @@ Namespace WecErp.Application.Identity
             Try
                 Dim salt = Convert.FromBase64String(parts(2))
                 Dim expected = Convert.FromBase64String(parts(3))
-                Using derive = New Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256)
-                    Dim actual = derive.GetBytes(expected.Length)
-                    Return CryptographicOperations.FixedTimeEquals(actual, expected)
-                End Using
+                Dim actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length)
+                Return CryptographicOperations.FixedTimeEquals(actual, expected)
             Catch
                 Return False
             End Try
