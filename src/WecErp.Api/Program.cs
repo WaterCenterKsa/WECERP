@@ -3,6 +3,7 @@ using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
 using WecErp.Application.Inventory;
+using WecErp.Application.Invoices;
 using WecErp.Application.Quotations;
 using WecErp.Application.Suppliers;
 using WecErp.Application.Purchasing;
@@ -28,6 +29,7 @@ builder.Services.AddSingleton<BookingService>();
 builder.Services.AddSingleton<InventoryService>();
 builder.Services.AddSingleton<SupplierService>();
 builder.Services.AddSingleton<PurchaseOrderService>();
+builder.Services.AddSingleton<InvoiceService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -54,6 +56,7 @@ app.MapGet("/api/v1/health/ready", async (ErpDbContext db, CancellationToken can
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesOrderEndpoints();
+app.MapInvoiceEndpoints();
 
 app.MapGet("/api/v1/items", async (
     ErpDbContext db,
