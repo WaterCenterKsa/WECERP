@@ -78,7 +78,8 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -589,5 +590,8 @@ app.MapPost("/api/v1/bookings", async (
 });
 
 app.Run();
+
+public partial class Program { }
+
 
 public partial class Program { }
