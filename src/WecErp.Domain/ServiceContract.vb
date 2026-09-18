@@ -32,6 +32,8 @@ Namespace WecErp.Domain
         Public Property Number As String = String.Empty
         Public Property CustomerId As Guid
         Public Property ServiceContractId As Guid?
+        Public Property SiteId As Guid?
+        Public Property AssetId As Guid?
         Public Property Status As WorkOrderStatus = WorkOrderStatus.Open
         Public Property ScheduledStartUtc As DateTimeOffset?
         Public Property ScheduledEndUtc As DateTimeOffset?
