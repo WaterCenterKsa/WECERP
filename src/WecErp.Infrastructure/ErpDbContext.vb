@@ -95,7 +95,8 @@ Namespace WecErp.Infrastructure
             site.Property(Function(x) x.Notes).HasMaxLength(1000).IsRequired()
             site.Property(Function(x) x.IsActive).IsRequired()
             site.Property(Function(x) x.CreatedUtc).IsRequired()
-            site.HasIndex(Function(x) New With {x.CustomerId, x.Code}).IsUnique()
+            site.HasIndex(Function(x) x.CustomerId)
+            site.HasIndex(Function(x) x.Code)
             site.HasOne(Of Customer)().WithMany().HasForeignKey(Function(x) x.CustomerId).OnDelete(DeleteBehavior.Restrict)
 
             Dim asset = modelBuilder.Entity(Of ServiceAsset)()
