@@ -61,7 +61,7 @@ public sealed class EndToEndSqlTests
     [Fact]
     public async Task SqlSchema_And_CoreErpWorkflow_WorkEndToEnd()
     {
-        await using var factory = new WecErpApiFactory();
+        using var factory = new WecErpApiFactory();
         await factory.ResetDatabaseAsync();
 
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -143,8 +143,8 @@ public sealed class EndToEndSqlTests
             }
         });
         Assert.Equal(201, (int)purchaseOrder.StatusCode);
-        var purchaseOrderId = await GetGuidAsync(purchaseOrder, "id");
-        var purchaseOrderJson = await ParseAsync(purchaseOrder);
+        using var purchaseOrderJson = await ParseAsync(purchaseOrder);
+        var purchaseOrderId = purchaseOrderJson.RootElement.GetProperty("id").GetGuid();
         var purchaseOrderLineId = purchaseOrderJson.RootElement.GetProperty("lines")[0].GetProperty("id").GetGuid();
 
         var confirmedPurchase = await PostJsonAsync(auth, $"/api/v1/purchase-orders/{purchaseOrderId}/status", new { Status = "Confirmed" });
@@ -174,8 +174,8 @@ public sealed class EndToEndSqlTests
             }
         });
         Assert.Equal(201, (int)quotation.StatusCode);
-        var quotationId = await GetGuidAsync(quotation, "id");
         using var quotationJson = await ParseAsync(quotation);
+        var quotationId = quotationJson.RootElement.GetProperty("id").GetGuid();
         Assert.Equal(345m, quotationJson.RootElement.GetProperty("total").GetDecimal());
 
         var acceptedQuotation = await PostJsonAsync(auth, $"/api/v1/quotations/{quotationId}/status", new { Status = "Accepted" });
@@ -304,6 +304,7 @@ public sealed class EndToEndSqlTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
         Assert.True(await db.Database.CanConnectAsync());
+        Assert.True(await db.AuditLogs.AnyAsync(x => x.UserName == "admin" && x.Path == "/api/v1/customers"));
 
         var migrations = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains("20260918141526_InitialCreate", migrations);
