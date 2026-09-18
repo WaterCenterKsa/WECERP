@@ -1,4 +1,5 @@
 using System.Text;
+using System.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -40,6 +41,7 @@ builder.Services.AddSingleton<InvoiceService>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ServiceService>();
+builder.Services.AddSingleton<SiteAssetService>();
 builder.Services.AddSingleton<ProjectService>();
 builder.Services.AddProblemDetails();
 
@@ -78,7 +80,63 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsEnvironment("Testing") && !app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
+app.UseExceptionHandler();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        if (context.Request.Path.StartsWithSegments("/api/v1") &&
+            !context.Request.Path.StartsWithSegments("/api/v1/health") &&
+            !context.Request.Path.StartsWithSegments("/api/v1/auth"))
+        {
+            try
+            {
+                await using var auditScope = app.Services.CreateAsyncScope();
+                var auditDb = auditScope.ServiceProvider.GetRequiredService<ErpDbContext>();
+
+                Guid? userId = null;
+                var userIdValue = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userIdValue, out var parsedUserId))
+                    userId = parsedUserId;
+
+                var userName = context.User.Identity?.Name
+                    ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                    ?? "anonymous";
+
+                auditDb.AuditLogs.Add(new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    UserName = userName.Length > 100 ? userName[..100] : userName,
+                    Action = context.Request.Method,
+                    Path = context.Request.Path.Value?.Length > 500
+                        ? context.Request.Path.Value[..500]
+                        : context.Request.Path.Value ?? string.Empty,
+                    Method = context.Request.Method.Length > 10
+                        ? context.Request.Method[..10]
+                        : context.Request.Method,
+                    StatusCode = context.Response.StatusCode,
+                    CreatedUtc = DateTimeOffset.UtcNow
+                });
+
+                await auditDb.SaveChangesAsync();
+            }
+            catch
+            {
+                // Auditing must never turn a successful business request into a failed request.
+            }
+        }
+    }
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -104,7 +162,9 @@ app.Use(async (context, next) =>
                     ? role is "Administrator" or "Manager" or "Accountant"
                     : path.StartsWith("/api/v1/service-contracts", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/v1/work-orders", StringComparison.OrdinalIgnoreCase)
                         ? role is "Administrator" or "Manager" or "Service"
-                        : true;
+                        : path.StartsWith("/api/v1/audit-logs", StringComparison.OrdinalIgnoreCase)
+                            ? role is "Administrator" or "Manager"
+                            : true;
 
         if (!allowed)
         {
@@ -114,7 +174,6 @@ app.Use(async (context, next) =>
     }
     await next();
 });
-app.UseExceptionHandler();
 
 app.MapGet("/api/v1/health/live", () => Results.Ok(new
 {
@@ -568,24 +627,38 @@ app.MapPost("/api/v1/bookings", async (
             return Results.BadRequest(new { error = "Resource does not exist or is inactive." });
     }
 
-    if (request.ResourceId.HasValue)
+    Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? bookingTransaction = null;
+    try
     {
-        var conflict = await db.Bookings.AnyAsync(x =>
-            x.ResourceId == request.ResourceId.Value &&
-            x.Status != BookingStatus.Cancelled &&
-            x.StartsUtc < request.EndsUtc &&
-            x.EndsUtc > request.StartsUtc,
-            cancellationToken);
+        if (request.ResourceId.HasValue)
+        {
+            bookingTransaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        if (conflict)
-            return Results.Conflict(new { error = "The selected resource is already booked during this time." });
+            var conflict = await db.Bookings.AnyAsync(x =>
+                x.ResourceId == request.ResourceId.Value &&
+                x.Status != BookingStatus.Cancelled &&
+                x.StartsUtc < request.EndsUtc &&
+                x.EndsUtc > request.StartsUtc,
+                cancellationToken);
+
+            if (conflict)
+                return Results.Conflict(new { error = "The selected resource is already booked during this time." });
+        }
+
+        var booking = service.CreateEntity(request);
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (bookingTransaction is not null)
+            await bookingTransaction.CommitAsync(cancellationToken);
+
+        return Results.Created($"/api/v1/bookings/{booking.Id}", service.ToDto(booking));
     }
-
-    var booking = service.CreateEntity(request);
-    db.Bookings.Add(booking);
-    await db.SaveChangesAsync(cancellationToken);
-
-    return Results.Created($"/api/v1/bookings/{booking.Id}", service.ToDto(booking));
+    finally
+    {
+        if (bookingTransaction is not null)
+            await bookingTransaction.DisposeAsync();
+    }
 });
 
 app.Run();

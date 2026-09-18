@@ -98,7 +98,7 @@ public static class PurchasingEndpoints
             Guid id,
             ReceivePurchaseOrderRequest request,
             ErpDbContext db,
-            InventoryService inventoryService,
+            [FromServices] InventoryService inventoryService,
             CancellationToken ct) =>
         {
             if (request.WarehouseId == Guid.Empty) return Results.BadRequest(new { error = "WarehouseId is required." });

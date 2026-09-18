@@ -29,6 +29,19 @@ jobs:
       - name: Restore EF Tools
         run: dotnet tool restore
 
+      - name: Validate local launch profile
+        shell: pwsh
+        run: |
+          $settings = Get-Content "src/WecErp.Api/Properties/launchSettings.json" -Raw | ConvertFrom-Json
+          $url = $settings.profiles."WecErp.Api".applicationUrl
+          if ($url -notmatch "https://localhost:7011" -or $url -notmatch "http://localhost:7010") {
+            throw "WecErp.Api development profile must use HTTPS 7011 and HTTP 7010."
+          }
+          $legacy = $settings.profiles."WecErp.Api - Legacy 7001".applicationUrl
+          if ($legacy -notmatch "https://localhost:7001" -or $legacy -notmatch "http://localhost:7000") {
+            throw "Legacy WEC ERP profile must retain HTTPS 7001 and HTTP 7000."
+          }
+
       - name: Validate EF DbContext
         run: dotnet ef dbcontext info --verbose --project src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --startup-project src/WecErp.Api/WecErp.Api.csproj
 
@@ -56,8 +69,68 @@ jobs:
       - name: Build Desktop
         run: dotnet build src/WecErp.Desktop/WecErp.Desktop.vbproj --configuration Release --no-restore
 
-      - name: Build Tests
+      - name: Build Application Tests
         run: dotnet build tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-restore
 
-      - name: Test
+      - name: Build API Tests
+        run: dotnet build tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj --configuration Release --no-restore
+
+      - name: Test Application
         run: dotnet test tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-build --no-restore
+
+  api-sql-integration:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: "Developer"
+          MSSQL_SA_PASSWORD: "WECERP_SqlTest_2026!"
+        ports:
+          - 1433:1433
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Wait for SQL Server
+        shell: bash
+        run: |
+          for i in {1..90}; do
+            if (echo > /dev/tcp/127.0.0.1/1433) >/dev/null 2>&1; then
+              echo "SQL Server TCP port is ready."
+              break
+            fi
+            sleep 2
+          done
+
+          sql_container="$(docker ps -q --filter 'ancestor=mcr.microsoft.com/mssql/server:2022-latest' | head -n 1)"
+          if [ -z "$sql_container" ]; then
+            echo "SQL Server service container was not found."
+            exit 1
+          fi
+
+          for i in {1..180}; do
+            if docker exec "$sql_container" /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'WECERP_SqlTest_2026!' -C -d master -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server accepts authenticated connections."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "SQL Server did not become ready for authenticated connections."
+          exit 1
+
+      - name: Restore
+        run: dotnet restore tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj
+
+      - name: Run SQL-backed ERP integration tests
+        env:
+          WECERP_TEST_CONNECTION: "Server=localhost,1433;Database=WecErp_ApiTest;User Id=sa;Password=WECERP_SqlTest_2026!;TrustServerCertificate=True;Encrypt=False;Connect Timeout=60"
+        run: dotnet test tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj --configuration Release --no-restore

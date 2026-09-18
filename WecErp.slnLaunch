@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "WEC ERP - API + Desktop",
+    "Projects": [
+      {
+        "Path": "src\\WecErp.Api\\WecErp.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\WecErp.Desktop\\WecErp.Desktop.vbproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
