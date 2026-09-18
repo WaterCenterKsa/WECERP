@@ -45,6 +45,29 @@ Namespace WecErp.Application.SalesOrders
             Return order
         End Function
 
+        Public Function TryChangeStatus(order As SalesOrder, requestedStatus As String, ByRef errorMessage As String) As Boolean
+            errorMessage = String.Empty
+            If order Is Nothing Then errorMessage = "Sales order is required.": Return False
+
+            Dim target As SalesOrderStatus
+            If Not [Enum].TryParse(requestedStatus.Trim(), True, target) OrElse Not [Enum].IsDefined(GetType(SalesOrderStatus), target) Then
+                errorMessage = "Invalid sales order status.": Return False
+            End If
+            If order.Status = target Then errorMessage = "Sales order is already in this status.": Return False
+
+            Dim allowed = (order.Status = SalesOrderStatus.Draft AndAlso target = SalesOrderStatus.Confirmed) OrElse
+                          (order.Status = SalesOrderStatus.Draft AndAlso target = SalesOrderStatus.Cancelled) OrElse
+                          (order.Status = SalesOrderStatus.Confirmed AndAlso target = SalesOrderStatus.Fulfilled) OrElse
+                          (order.Status = SalesOrderStatus.Confirmed AndAlso target = SalesOrderStatus.Cancelled)
+            If Not allowed Then
+                errorMessage = $"Sales order cannot move from {order.Status} to {target}."
+                Return False
+            End If
+
+            order.Status = target
+            Return True
+        End Function
+
         Public Function ToDto(entity As SalesOrder) As SalesOrderDto
             Return New SalesOrderDto With {
                 .Id = entity.Id,
