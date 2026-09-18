@@ -40,6 +40,44 @@ Namespace WecErp.Application.Service
             }
         End Function
 
+        Public Function GenerateScheduledWorkOrders(contract As ServiceContract, request As GenerateWorkOrdersRequest, ByRef errorMessage As String) As List(Of WorkOrder)
+            errorMessage = String.Empty
+            If contract Is Nothing Then errorMessage = "Service contract is required.": Return New List(Of WorkOrder)()
+            If contract.Status <> ServiceContractStatus.Active Then errorMessage = "Only active service contracts can generate work orders.": Return New List(Of WorkOrder)()
+            If request.FirstVisitUtc = DateTimeOffset.MinValue Then errorMessage = "FirstVisitUtc is required.": Return New List(Of WorkOrder)()
+            If request.DurationMinutes < 1 OrElse request.DurationMinutes > 1440 Then errorMessage = "DurationMinutes must be between 1 and 1440.": Return New List(Of WorkOrder)()
+
+            Dim startDate = request.FirstVisitUtc.UtcDateTime.Date
+            If startDate < contract.StartsOn.ToDateTime(TimeOnly.MinValue).Date OrElse startDate > contract.EndsOn.ToDateTime(TimeOnly.MaxValue).Date Then
+                errorMessage = "FirstVisitUtc must fall within the service contract dates."
+                Return New List(Of WorkOrder)()
+            End If
+
+            Dim interval = TimeSpan.FromDays(7.0 / contract.VisitFrequencyPerWeek)
+            Dim cursor = request.FirstVisitUtc.ToUniversalTime()
+            Dim contractEndUtc = New DateTimeOffset(contract.EndsOn.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero)
+            Dim result = New List(Of WorkOrder)()
+
+            While cursor <= contractEndUtc
+                Dim orderEnd = cursor.AddMinutes(request.DurationMinutes)
+                If orderEnd > contractEndUtc.AddMinutes(1) Then Exit While
+                result.Add(New WorkOrder With {
+                    .Id = Guid.NewGuid(),
+                    .Number = $"WO-{cursor:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant()}",
+                    .CustomerId = contract.CustomerId,
+                    .ServiceContractId = contract.Id,
+                    .Status = WorkOrderStatus.Scheduled,
+                    .ScheduledStartUtc = cursor,
+                    .ScheduledEndUtc = orderEnd,
+                    .Description = If(String.IsNullOrWhiteSpace(request.Description), "Scheduled maintenance visit", request.Description.Trim()),
+                    .CreatedUtc = DateTimeOffset.UtcNow
+                })
+                cursor = cursor.Add(interval)
+            End While
+
+            Return result
+        End Function
+
         Public Function TryChangeWorkOrderStatus(order As WorkOrder, requestedStatus As String, ByRef errorMessage As String) As Boolean
             errorMessage = String.Empty
             Dim target As WorkOrderStatus
