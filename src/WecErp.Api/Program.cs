@@ -11,6 +11,7 @@ using WecErp.Application.Quotations;
 using WecErp.Application.Suppliers;
 using WecErp.Application.Purchasing;
 using WecErp.Application.SalesOrders;
+using WecErp.Application.Service;
 using WecErp.Domain;
 using WecErp.Infrastructure;
 
@@ -35,6 +36,7 @@ builder.Services.AddSingleton<PurchaseOrderService>();
 builder.Services.AddSingleton<InvoiceService>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<ServiceService>();
 builder.Services.AddProblemDetails();
 
 var jwtKey = builder.Configuration["Identity:JwtKey"];
@@ -106,6 +108,7 @@ app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesOrderEndpoints();
 app.MapInvoiceEndpoints();
+app.MapServiceEndpoints();
 
 app.MapGet("/api/v1/audit-logs", async (ErpDbContext db, int? page, int? pageSize, CancellationToken ct) =>
 {
