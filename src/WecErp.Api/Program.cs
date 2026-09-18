@@ -39,7 +39,12 @@ builder.Services.AddProblemDetails();
 
 var jwtKey = builder.Configuration["Identity:JwtKey"];
 if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
-    throw new InvalidOperationException("Identity:JwtKey must be configured with at least 32 UTF-8 bytes.");
+{
+    if (builder.Environment.IsDevelopment())
+        jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+    else
+        throw new InvalidOperationException("Identity:JwtKey must be configured with at least 32 UTF-8 bytes.");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
