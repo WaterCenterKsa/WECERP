@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,7 +20,7 @@ public static class IdentityEndpoints
             CreateUserRequest request,
             IConfiguration configuration,
             HttpContext httpContext,
-            UserService service,
+            [FromServices] UserService service,
             ErpDbContext db,
             CancellationToken ct) =>
         {
@@ -50,7 +51,7 @@ public static class IdentityEndpoints
         app.MapPost("/api/v1/auth/login", async (
             LoginRequest request,
             IConfiguration configuration,
-            PasswordHasher hasher,
+            [FromServices] PasswordHasher hasher,
             ErpDbContext db,
             CancellationToken ct) =>
         {
