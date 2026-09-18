@@ -56,8 +56,53 @@ jobs:
       - name: Build Desktop
         run: dotnet build src/WecErp.Desktop/WecErp.Desktop.vbproj --configuration Release --no-restore
 
-      - name: Build Tests
+      - name: Build Application Tests
         run: dotnet build tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-restore
 
-      - name: Test
+      - name: Build API Tests
+        run: dotnet build tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj --configuration Release --no-restore
+
+      - name: Test Application
         run: dotnet test tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-build --no-restore
+
+  api-sql-integration:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: "Developer"
+          MSSQL_SA_PASSWORD: "WECERP_SqlTest_2026!"
+        ports:
+          - 1433:1433
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Wait for SQL Server
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            if (echo > /dev/tcp/127.0.0.1/1433) >/dev/null 2>&1; then
+              echo "SQL Server TCP port is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "SQL Server did not become reachable."
+          exit 1
+
+      - name: Restore
+        run: dotnet restore tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj
+
+      - name: Run SQL-backed ERP integration tests
+        env:
+          WECERP_TEST_CONNECTION: "Server=localhost,1433;Database=WecErp_ApiTest;User Id=sa;Password=WECERP_SqlTest_2026!;TrustServerCertificate=True;Encrypt=False"
+        run: dotnet test tests/WecErp.Api.Tests/WecErp.Api.Tests.csproj --configuration Release --no-restore
