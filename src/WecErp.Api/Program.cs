@@ -40,6 +40,7 @@ builder.Services.AddSingleton<InvoiceService>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ServiceService>();
+builder.Services.AddSingleton<SiteAssetService>();
 builder.Services.AddSingleton<ProjectService>();
 builder.Services.AddProblemDetails();
 
