@@ -80,7 +80,7 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
-if (!app.Environment.IsEnvironment("Testing"))
+if (!app.Environment.IsEnvironment("Testing") && !app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
 app.UseExceptionHandler();
