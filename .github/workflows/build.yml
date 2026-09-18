@@ -98,7 +98,7 @@ jobs:
           done
 
           for i in {1..30}; do
-            if /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'WECERP_SqlTest_2026!' -C -Q "SELECT 1" >/dev/null 2>&1; then
+            if /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'WECERP_SqlTest_2026!' -C -d master -Q "SELECT 1" >/dev/null 2>&1; then
               echo "SQL Server accepts authenticated connections."
               exit 0
             fi
