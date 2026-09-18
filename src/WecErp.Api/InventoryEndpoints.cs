@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Inventory;
 using WecErp.Domain;
@@ -163,6 +164,8 @@ public static class InventoryEndpoints
                     return Results.BadRequest(new { error = "Transfer warehouse does not exist or is inactive." });
             }
 
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
             var signedOnHand = await CalculateOnHand(db, request.ItemId, request.WarehouseId, cancellationToken);
             var reserved = await CalculateReserved(db, request.ItemId, request.WarehouseId, cancellationToken);
 
@@ -179,8 +182,6 @@ public static class InventoryEndpoints
 
             if (request.Type == InventoryMovementType.Reservation && signedOnHand - reserved < request.Quantity)
                 return Results.Conflict(new { error = "Insufficient available stock to reserve." });
-
-            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
             var movement = service.CreateMovement(request, request.Type, request.WarehouseId);
             db.InventoryMovements.Add(movement);
