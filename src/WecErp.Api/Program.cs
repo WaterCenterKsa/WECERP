@@ -53,6 +53,7 @@ app.MapGet("/api/v1/health/ready", async (ErpDbContext db, CancellationToken can
 
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
+app.MapSalesOrderEndpoints();
 
 app.MapGet("/api/v1/items", async (
     ErpDbContext db,
