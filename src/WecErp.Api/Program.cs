@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
+using WecErp.Application.Inventory;
 using WecErp.Application.Quotations;
 using WecErp.Application.SalesOrders;
 using WecErp.Domain;
@@ -19,6 +20,7 @@ builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<QuotationService>();
 builder.Services.AddSingleton<SalesOrderService>();
 builder.Services.AddSingleton<BookingService>();
+builder.Services.AddSingleton<InventoryService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -41,6 +43,8 @@ app.MapGet("/api/v1/health/ready", async (ErpDbContext db, CancellationToken can
         ? Results.Ok(new { status = "ready", database = "connected" })
         : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 });
+
+app.MapInventoryEndpoints();
 
 app.MapGet("/api/v1/items", async (
     ErpDbContext db,
