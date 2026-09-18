@@ -30,7 +30,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Validate EF DbContext
-        run: dotnet ef dbcontext info --project src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --startup-project src/WecErp.Api/WecErp.Api.csproj
+        run: dotnet ef dbcontext info --verbose --project src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --startup-project src/WecErp.Api/WecErp.Api.csproj
 
       - name: Restore Tests
         run: dotnet restore tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj
