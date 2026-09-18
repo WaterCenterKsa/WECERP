@@ -134,6 +134,29 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)customer.StatusCode);
         var customerId = await GetGuidAsync(customer, "id");
 
+        var site = await PostJsonAsync(client, "/api/v1/customer-sites", new
+        {
+            CustomerId = customerId,
+            Code = "SQLTEST-SITE01",
+            Name = "SQL Integration Site",
+            City = "Jeddah",
+            District = "Test District"
+        });
+        Assert.Equal(201, (int)site.StatusCode);
+        var siteId = await GetGuidAsync(site, "id");
+
+        var asset = await PostJsonAsync(client, "/api/v1/service-assets", new
+        {
+            CustomerId = customerId,
+            SiteId = siteId,
+            AssetNumber = "SQLTEST-A001",
+            Name = "SQL Integration Asset",
+            SerialNumber = "SQLTEST-SN001",
+            Model = "SQL-TEST"
+        });
+        Assert.Equal(201, (int)asset.StatusCode);
+        var assetId = await GetGuidAsync(asset, "id");
+
         var item = await PostJsonAsync(client, "/api/v1/items", new
         {
             Sku = "SQLTEST-P001",
@@ -314,6 +337,18 @@ public sealed class EndToEndSqlTests
 
         var activatedContract = await PostJsonAsync(client, $"/api/v1/service-contracts/{serviceContractId}/activate", new { });
         Assert.Equal(200, (int)activatedContract.StatusCode);
+
+        var workOrder = await PostJsonAsync(client, "/api/v1/work-orders", new
+        {
+            CustomerId = customerId,
+            ServiceContractId = serviceContractId,
+            SiteId = siteId,
+            AssetId = assetId,
+            ScheduledStartUtc = DateTimeOffset.UtcNow.AddHours(4),
+            ScheduledEndUtc = DateTimeOffset.UtcNow.AddHours(5),
+            Description = "SQL integration manual work order"
+        });
+        Assert.Equal(201, (int)workOrder.StatusCode);
 
         var generated = await PostJsonAsync(client, $"/api/v1/service-contracts/{serviceContractId}/generate-work-orders", new
         {
