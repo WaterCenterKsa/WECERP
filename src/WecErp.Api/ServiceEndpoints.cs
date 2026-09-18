@@ -30,6 +30,32 @@ public static class ServiceEndpoints
             return Results.Created($"/api/v1/service-contracts/{contract.Id}", contract);
         });
 
+        app.MapPost("/api/v1/service-contracts/{id:guid}/generate-work-orders", async (Guid id, GenerateWorkOrdersRequest request, ServiceService service, ErpDbContext db, CancellationToken ct) =>
+        {
+            var contract = await db.ServiceContracts.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (contract is null) return Results.NotFound(new { error = "Service contract not found." });
+
+            var error = String.Empty;
+            var generated = service.GenerateScheduledWorkOrders(contract, request, ref error);
+            if (!String.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
+            if (generated.Count == 0) return Results.BadRequest(new { error = "No work orders can be generated for the requested contract period." });
+
+            var starts = generated.Where(x => x.ScheduledStartUtc.HasValue).Select(x => x.ScheduledStartUtc!.Value).ToList();
+            var ends = generated.Where(x => x.ScheduledEndUtc.HasValue).Select(x => x.ScheduledEndUtc!.Value).ToList();
+            var existing = await db.WorkOrders
+                .Where(x => x.ServiceContractId == contract.Id && x.ScheduledStartUtc.HasValue && x.ScheduledStartUtc.Value >= starts.Min() && x.ScheduledStartUtc.Value <= ends.Max())
+                .Select(x => x.ScheduledStartUtc!.Value)
+                .ToListAsync(ct);
+
+            var existingSet = existing.ToHashSet();
+            var newOrders = generated.Where(x => x.ScheduledStartUtc.HasValue && !existingSet.Contains(x.ScheduledStartUtc.Value)).ToList();
+            if (newOrders.Count == 0) return Results.Ok(new { generated = 0, workOrders = Array.Empty<WorkOrder>() });
+
+            db.WorkOrders.AddRange(newOrders);
+            await db.SaveChangesAsync(ct);
+            return Results.Created($"/api/v1/service-contracts/{contract.Id}/work-orders", new { generated = newOrders.Count, workOrders = newOrders });
+        });
+
         app.MapPost("/api/v1/service-contracts/{id:guid}/activate", async (Guid id, ErpDbContext db, CancellationToken ct) =>
         {
             var contract = await db.ServiceContracts.FirstOrDefaultAsync(x => x.Id == id, ct);
