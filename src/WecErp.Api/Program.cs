@@ -127,6 +127,7 @@ app.MapPurchasingEndpoints();
 app.MapSalesOrderEndpoints();
 app.MapInvoiceEndpoints();
 app.MapServiceEndpoints();
+app.MapProjectEndpoints();
 
 app.MapGet("/api/v1/audit-logs", async (ErpDbContext db, int? page, int? pageSize, CancellationToken ct) =>
 {
