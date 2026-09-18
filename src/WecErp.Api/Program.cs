@@ -265,7 +265,7 @@ app.MapPost("/api/v1/quotations/{id:guid}/status", async (
         return Results.NotFound(new { error = "Quotation not found." });
 
     var errorMessage = String.Empty;
-    var changed = service.TryChangeStatus(quotation, request.Status, errorMessage);
+    var changed = service.TryChangeStatus(quotation, request.Status, ref errorMessage);
     if (!changed)
         return Results.BadRequest(new { error = errorMessage });
 
