@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Inventory;
@@ -38,7 +39,7 @@ public static class InventoryEndpoints
 
         app.MapPost("/api/v1/warehouses", async (
             CreateWarehouseRequest request,
-            InventoryService service,
+            [FromServices] InventoryService service,
             ErpDbContext db,
             CancellationToken cancellationToken) =>
         {
@@ -138,7 +139,7 @@ public static class InventoryEndpoints
 
         app.MapPost("/api/v1/inventory/movements", async (
             CreateInventoryMovementRequest request,
-            InventoryService service,
+            [FromServices] InventoryService service,
             ErpDbContext db,
             CancellationToken cancellationToken) =>
         {
