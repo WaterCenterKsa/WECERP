@@ -159,7 +159,9 @@ app.Use(async (context, next) =>
                     ? role is "Administrator" or "Manager" or "Accountant"
                     : path.StartsWith("/api/v1/service-contracts", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/v1/work-orders", StringComparison.OrdinalIgnoreCase)
                         ? role is "Administrator" or "Manager" or "Service"
-                        : true;
+                        : path.StartsWith("/api/v1/audit-logs", StringComparison.OrdinalIgnoreCase)
+                            ? role is "Administrator" or "Manager"
+                            : true;
 
         if (!allowed)
         {
