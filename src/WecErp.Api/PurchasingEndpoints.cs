@@ -87,7 +87,7 @@ public static class PurchasingEndpoints
             var order = await db.PurchaseOrders.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (order is null) return Results.NotFound(new { error = "Purchase order not found." });
             var error = String.Empty;
-            if (!service.TryChangeStatus(order, request.Status, error))
+            if (!service.TryChangeStatus(order, request.Status, ref error))
                 return Results.BadRequest(new { error });
             await db.SaveChangesAsync(ct);
             return Results.Ok(order);
