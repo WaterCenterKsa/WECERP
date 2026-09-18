@@ -17,6 +17,7 @@ public static class IdentityEndpoints
         app.MapPost("/api/v1/auth/bootstrap", async (
             CreateUserRequest request,
             IConfiguration configuration,
+            HttpContext httpContext,
             UserService service,
             ErpDbContext db,
             CancellationToken ct) =>
@@ -31,7 +32,7 @@ public static class IdentityEndpoints
             if (!string.Equals(request.Password, request.Password.Trim(), StringComparison.Ordinal))
                 return Results.BadRequest(new { error = "Password contains leading or trailing whitespace." });
 
-            var suppliedKey = app.HttpContextAccessor()?.Request.Headers["X-WEC-Setup-Key"].FirstOrDefault();
+            var suppliedKey = httpContext.Request.Headers["X-WEC-Setup-Key"].FirstOrDefault();
             if (!string.Equals(suppliedKey, setupKey, StringComparison.Ordinal))
                 return Results.Unauthorized();
 
