@@ -29,6 +29,7 @@ Namespace WecErp.Domain
         Public Property Sequence As Integer
         Public Property IsCompleted As Boolean
         Public Property EstimatedCost As Decimal
+        Public Property ActualCost As Decimal
         Public Property CreatedUtc As DateTimeOffset = DateTimeOffset.UtcNow
     End Class
 End Namespace
