@@ -262,7 +262,7 @@ public sealed class EndToEndSqlTests
         var invoiceDetails = await client.GetAsync($"/api/v1/invoices/{invoiceId}");
         Assert.Equal(200, (int)invoiceDetails.StatusCode);
         using var invoiceJson = JsonDocument.Parse(await invoiceDetails.Content.ReadAsStringAsync());
-        Assert.Equal("Paid", invoiceJson.RootElement.GetProperty("status").GetString());
+        Assert.Equal(4, invoiceJson.RootElement.GetProperty("status").GetInt32());
         Assert.Equal(345m, invoiceJson.RootElement.GetProperty("paidAmount").GetDecimal());
 
         var resource = await PostJsonAsync(client, "/api/v1/resources", new
