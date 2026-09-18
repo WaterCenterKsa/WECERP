@@ -658,6 +658,7 @@ app.MapPost("/api/v1/bookings", async (
         if (bookingTransaction is not null)
             await bookingTransaction.DisposeAsync();
     }
+});
 
 app.Run();
 
