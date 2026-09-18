@@ -80,8 +80,62 @@ if (app.Environment.IsDevelopment())
 
 if (!app.Environment.IsEnvironment("Testing"))
     app.UseHttpsRedirection();
+
+app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        if (context.Request.Path.StartsWithSegments("/api/v1") &&
+            !context.Request.Path.StartsWithSegments("/api/v1/health") &&
+            !context.Request.Path.StartsWithSegments("/api/v1/auth"))
+        {
+            try
+            {
+                await using var auditScope = app.Services.CreateAsyncScope();
+                var auditDb = auditScope.ServiceProvider.GetRequiredService<ErpDbContext>();
+
+                Guid? userId = null;
+                var userIdValue = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userIdValue, out var parsedUserId))
+                    userId = parsedUserId;
+
+                var userName = context.User.Identity?.Name
+                    ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                    ?? "anonymous";
+
+                auditDb.AuditLogs.Add(new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    UserName = userName.Length > 100 ? userName[..100] : userName,
+                    Action = context.Request.Method,
+                    Path = context.Request.Path.Value?.Length > 500
+                        ? context.Request.Path.Value[..500]
+                        : context.Request.Path.Value ?? string.Empty,
+                    Method = context.Request.Method.Length > 10
+                        ? context.Request.Method[..10]
+                        : context.Request.Method,
+                    StatusCode = context.Response.StatusCode,
+                    CreatedUtc = DateTimeOffset.UtcNow
+                });
+
+                await auditDb.SaveChangesAsync();
+            }
+            catch
+            {
+                // Auditing must never turn a successful business request into a failed request.
+            }
+        }
+    }
+});
 
 app.Use(async (context, next) =>
 {
@@ -115,7 +169,6 @@ app.Use(async (context, next) =>
     }
     await next();
 });
-app.UseExceptionHandler();
 
 app.MapGet("/api/v1/health/live", () => Results.Ok(new
 {
