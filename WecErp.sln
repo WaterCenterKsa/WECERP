@@ -7,6 +7,8 @@ Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "WecErp.Desktop", "src\WecEr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WecErp.Api", "src\WecErp.Api\WecErp.Api.csproj", "{2D2A7E4C-4B9D-4F1B-9B0E-9C4F7E5A1002}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WecErp.Api.Tests", "tests\\WecErp.Api.Tests\\WecErp.Api.Tests.csproj", "{B7A84F2E-DA11-4B6F-9B84-CCB5C6E7D221}"
+EndProject
 Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "WecErp.Domain", "src\WecErp.Domain\WecErp.Domain.vbproj", "{2D2A7E4C-4B9D-4F1B-9B0E-9C4F7E5A1003}"
 EndProject
 Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "WecErp.Application", "src\WecErp.Application\WecErp.Application.vbproj", "{2D2A7E4C-4B9D-4F1B-9B0E-9C4F7E5A1004}"
