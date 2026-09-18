@@ -51,5 +51,24 @@ public static class ProjectEndpoints
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/v1/projects/{id}/tasks/{task.Id}", task);
         });
+
+        app.MapPost("/api/v1/projects/{id:guid}/tasks/{taskId:guid}/cost", async (Guid id, Guid taskId, UpdateProjectTaskCostRequest request, ErpDbContext db, CancellationToken ct) =>
+        {
+            if (request.ActualCost < 0m) return Results.BadRequest(new { error = "ActualCost cannot be negative." });
+            var task = await db.ProjectTasks.FirstOrDefaultAsync(x => x.Id == taskId && x.ProjectId == id, ct);
+            if (task is null) return Results.NotFound(new { error = "Project task not found." });
+            task.ActualCost = Decimal.Round(request.ActualCost, 2, MidpointRounding.AwayFromZero);
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(task);
+        });
+
+        app.MapPost("/api/v1/projects/{id:guid}/tasks/{taskId:guid}/completion", async (Guid id, Guid taskId, CompleteProjectTaskRequest request, ErpDbContext db, CancellationToken ct) =>
+        {
+            var task = await db.ProjectTasks.FirstOrDefaultAsync(x => x.Id == taskId && x.ProjectId == id, ct);
+            if (task is null) return Results.NotFound(new { error = "Project task not found." });
+            task.IsCompleted = request.Completed;
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(task);
+        });
     }
 }
