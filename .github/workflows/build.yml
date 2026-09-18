@@ -1,5 +1,9 @@
 name: WEC ERP Build
 
+concurrency:
+  group: wecerp-build-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
