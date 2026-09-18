@@ -32,6 +32,8 @@ Namespace WecErp.Application.Service
                 .Number = $"WO-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant()}",
                 .CustomerId = request.CustomerId,
                 .ServiceContractId = request.ServiceContractId,
+                .SiteId = request.SiteId,
+                .AssetId = request.AssetId,
                 .Status = If(request.ScheduledStartUtc.HasValue, WorkOrderStatus.Scheduled, WorkOrderStatus.Open),
                 .ScheduledStartUtc = request.ScheduledStartUtc,
                 .ScheduledEndUtc = request.ScheduledEndUtc,
