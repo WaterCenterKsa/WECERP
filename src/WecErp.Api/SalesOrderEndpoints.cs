@@ -38,19 +38,19 @@ public static class SalesOrderEndpoints
             var order = await db.SalesOrders.Include(x => x.Lines)
                 .FirstOrDefaultAsync(x => x.Id == id, ct);
             if (order is null) return Results.NotFound(new { error = "Sales order not found." });
-            if (order.Status <> SalesOrderStatus.Confirmed)
+            if (order.Status != SalesOrderStatus.Confirmed)
                 return Results.BadRequest(new { error = "Only confirmed sales orders can be fulfilled." });
 
             var itemIds = order.Lines.Select(x => x.ItemId).Distinct().ToList();
             var items = await db.Items.Where(x => itemIds.Contains(x.Id) && x.IsActive)
                 .ToDictionaryAsync(x => x.Id, ct);
-            if (items.Count <> itemIds.Count)
+            if (items.Count != itemIds.Count)
                 return Results.BadRequest(new { error = "One or more sales order items do not exist or are inactive." });
 
-            var stockLines = order.Lines.Where(x => items[x.ItemId].Type = ItemType.Product).ToList();
+            var stockLines = order.Lines.Where(x => items[x.ItemId].Type == ItemType.Product).ToList();
             if (stockLines.Count > 0)
             {
-                if (!request.WarehouseId.HasValue || request.WarehouseId.Value = Guid.Empty)
+                if (!request.WarehouseId.HasValue || request.WarehouseId.Value == Guid.Empty)
                     return Results.BadRequest(new { error = "WarehouseId is required to fulfill product lines." });
 
                 var warehouseExists = await db.Warehouses.AnyAsync(x => x.Id == request.WarehouseId.Value && x.IsActive, ct);
