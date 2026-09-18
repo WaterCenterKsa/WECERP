@@ -17,6 +17,8 @@ Namespace WecErp.Infrastructure
         Public Property SalesOrderLines As DbSet(Of SalesOrderLine)
         Public Property Resources As DbSet(Of Resource)
         Public Property Bookings As DbSet(Of Booking)
+        Public Property Warehouses As DbSet(Of Warehouse)
+        Public Property InventoryMovements As DbSet(Of InventoryMovement)
 
         Protected Overrides Sub OnModelCreating(modelBuilder As ModelBuilder)
             MyBase.OnModelCreating(modelBuilder)
@@ -121,6 +123,28 @@ Namespace WecErp.Infrastructure
             booking.HasOne(Of Customer)().WithMany().HasForeignKey(Function(x) x.CustomerId).OnDelete(DeleteBehavior.Restrict)
             booking.HasOne(Of Item)().WithMany().HasForeignKey(Function(x) x.ItemId).OnDelete(DeleteBehavior.Restrict)
             booking.HasOne(Of Resource)().WithMany().HasForeignKey(Function(x) x.ResourceId).OnDelete(DeleteBehavior.Restrict)
+
+            Dim warehouse = modelBuilder.Entity(Of Warehouse)()
+            warehouse.ToTable("Warehouses")
+            warehouse.HasKey(Function(x) x.Id)
+            warehouse.Property(Function(x) x.Code).HasMaxLength(50).IsRequired()
+            warehouse.Property(Function(x) x.Name).HasMaxLength(200).IsRequired()
+            warehouse.Property(Function(x) x.IsActive).IsRequired()
+            warehouse.Property(Function(x) x.CreatedUtc).IsRequired()
+            warehouse.HasIndex(Function(x) x.Code).IsUnique()
+
+            Dim movement = modelBuilder.Entity(Of InventoryMovement)()
+            movement.ToTable("InventoryMovements")
+            movement.HasKey(Function(x) x.Id)
+            movement.Property(Function(x) x.Type).IsRequired()
+            movement.Property(Function(x) x.Quantity).HasPrecision(19, 4)
+            movement.Property(Function(x) x.ReferenceType).HasMaxLength(100).IsRequired()
+            movement.Property(Function(x) x.Notes).HasMaxLength(500).IsRequired()
+            movement.Property(Function(x) x.CreatedUtc).IsRequired()
+            movement.HasIndex(Function(x) New With {x.ItemId, x.WarehouseId, x.CreatedUtc})
+            movement.HasIndex(Function(x) New With {x.ReferenceType, x.ReferenceId})
+            movement.HasOne(Of Item)().WithMany().HasForeignKey(Function(x) x.ItemId).OnDelete(DeleteBehavior.Restrict)
+            movement.HasOne(Of Warehouse)().WithMany().HasForeignKey(Function(x) x.WarehouseId).OnDelete(DeleteBehavior.Restrict)
         End Sub
     End Class
 End Namespace
