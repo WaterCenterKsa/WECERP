@@ -107,6 +107,15 @@ app.MapPurchasingEndpoints();
 app.MapSalesOrderEndpoints();
 app.MapInvoiceEndpoints();
 
+app.MapGet("/api/v1/audit-logs", async (ErpDbContext db, int? page, int? pageSize, CancellationToken ct) =>
+{
+    var currentPage = Math.Max(page ?? 1, 1);
+    var size = Math.Clamp(pageSize ?? 50, 1, 200);
+    var logs = await db.AuditLogs.AsNoTracking().OrderByDescending(x => x.CreatedUtc)
+        .Skip((currentPage - 1) * size).Take(size).ToListAsync(ct);
+    return Results.Ok(new { page = currentPage, pageSize = size, logs });
+}).RequireAuthorization();
+
 app.MapGet("/api/v1/items", async (
     ErpDbContext db,
     int? page,
