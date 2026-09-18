@@ -22,7 +22,6 @@ Namespace WecErp.Application.Projects
     End Class
 
     Public Class UpdateProjectTaskCostRequest
-        Public Property ActualCost As Decimal
     End Class
 
     Public Class CompleteProjectTaskRequest
