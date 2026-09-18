@@ -26,6 +26,12 @@ jobs:
       - name: Restore
         run: dotnet restore WecErp.sln
 
+      - name: Restore EF Tools
+        run: dotnet tool restore
+
+      - name: Validate EF DbContext
+        run: dotnet ef dbcontext info --project src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --startup-project src/WecErp.Api/WecErp.Api.csproj --no-build
+
       - name: Restore Tests
         run: dotnet restore tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj
 
