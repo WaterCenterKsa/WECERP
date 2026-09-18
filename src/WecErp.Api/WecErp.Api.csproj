@@ -16,5 +16,6 @@
   <ItemGroup>
     <ProjectReference Include="..\WecErp.Application\WecErp.Application.vbproj" />
     <ProjectReference Include="..\WecErp.Infrastructure\WecErp.Infrastructure.vbproj" />
+    <ProjectReference Include="..\WecErp.Infrastructure.Migrations\WecErp.Infrastructure.Migrations.csproj" />
   </ItemGroup>
 </Project>
