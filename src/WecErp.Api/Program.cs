@@ -15,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("ErpDatabase")
     ?? throw new InvalidOperationException("ConnectionStrings:ErpDatabase is not configured.");
 
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("ConnectionStrings:ErpDatabase cannot be empty.");
+
 builder.Services.AddDbContext<ErpDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddSingleton<CustomerService>();
