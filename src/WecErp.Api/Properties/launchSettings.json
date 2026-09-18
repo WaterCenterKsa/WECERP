@@ -3,6 +3,14 @@
     "WecErp.Api": {
       "commandName": "Project",
       "launchBrowser": false,
+      "applicationUrl": "https://localhost:7011;http://localhost:7010",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "WecErp.Api - Legacy 7001": {
+      "commandName": "Project",
+      "launchBrowser": false,
       "applicationUrl": "https://localhost:7001;http://localhost:7000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
