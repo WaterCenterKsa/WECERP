@@ -44,6 +44,12 @@ jobs:
       - name: Build Infrastructure
         run: dotnet build src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --configuration Release --no-restore
 
+      - name: Build Migrations
+        run: dotnet build src/WecErp.Infrastructure.Migrations/WecErp.Infrastructure.Migrations.csproj --configuration Release --no-restore
+
+      - name: Validate migrations
+        run: dotnet ef migrations list --project src/WecErp.Infrastructure.Migrations/WecErp.Infrastructure.Migrations.csproj --startup-project src/WecErp.Infrastructure.Migrations/WecErp.Infrastructure.Migrations.csproj --context ErpDbContext
+
       - name: Build API
         run: dotnet build src/WecErp.Api/WecErp.Api.csproj --configuration Release --no-restore
 
