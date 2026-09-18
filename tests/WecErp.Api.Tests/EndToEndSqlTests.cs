@@ -337,7 +337,7 @@ public sealed class EndToEndSqlTests
         Assert.True(await db.AuditLogs.AnyAsync(x => x.UserName == "admin" && x.Path == "/api/v1/customers"));
 
         var migrations = await db.Database.GetAppliedMigrationsAsync();
-        Assert.True(migrations.Any(x => x.EndsWith("_InitialCreate", StringComparison.Ordinal)));
+        Assert.Contains(migrations, x => x.EndsWith("_InitialCreate", StringComparison.Ordinal));
 
         var expectedTables = new[]
         {
