@@ -29,4 +29,7 @@ Namespace WecErp.Application.SalesOrders
         Public Property CreatedUtc As DateTimeOffset
         Public Property Lines As List(Of SalesOrderLineDto) = New List(Of SalesOrderLineDto)()
     End Class
+    Public Class FulfillSalesOrderRequest
+        Public Property WarehouseId As Guid?
+    End Class
 End Namespace
