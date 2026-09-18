@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -89,6 +90,6 @@ public static class IdentityEndpoints
             Results.Ok(new { users = await db.Users.AsNoTracking().OrderBy(x => x.UserName).Select(x => new UserDto {
                 Id = x.Id, UserName = x.UserName, DisplayName = x.DisplayName, Role = x.Role,
                 IsActive = x.IsActive, CreatedUtc = x.CreatedUtc, LastLoginUtc = x.LastLoginUtc
-            }).ToListAsync(ct) }));
+            }).ToListAsync(ct) })).RequireAuthorization(new AuthorizeAttribute { Roles = "Administrator" });
     }
 }
