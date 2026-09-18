@@ -21,8 +21,20 @@ jobs:
       - name: Restore
         run: dotnet restore WecErp.sln
 
-      - name: Build
-        run: dotnet build WecErp.sln --configuration Release --no-restore
+      - name: Build Domain
+        run: dotnet build src/WecErp.Domain/WecErp.Domain.vbproj --configuration Release --no-restore
+
+      - name: Build Application
+        run: dotnet build src/WecErp.Application/WecErp.Application.vbproj --configuration Release --no-restore
+
+      - name: Build Infrastructure
+        run: dotnet build src/WecErp.Infrastructure/WecErp.Infrastructure.vbproj --configuration Release --no-restore
+
+      - name: Build API
+        run: dotnet build src/WecErp.Api/WecErp.Api.csproj --configuration Release --no-restore
+
+      - name: Build Desktop
+        run: dotnet build src/WecErp.Desktop/WecErp.Desktop.vbproj --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test WecErp.sln --configuration Release --no-build --no-restore
+        run: dotnet test tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-build --no-restore
