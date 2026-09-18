@@ -82,6 +82,24 @@ app.Use(async (context, next) =>
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+
+        var path = context.Request.Path.Value ?? String.Empty;
+        var role = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        var allowed = path.StartsWith("/api/v1/inventory/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/v1/warehouses", StringComparison.OrdinalIgnoreCase)
+            ? role is "Administrator" or "Manager" or "Warehouse"
+            : path.StartsWith("/api/v1/purchase-orders", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/v1/suppliers", StringComparison.OrdinalIgnoreCase)
+                ? role is "Administrator" or "Manager" or "Purchasing"
+                : path.StartsWith("/api/v1/invoices", StringComparison.OrdinalIgnoreCase)
+                    ? role is "Administrator" or "Manager" or "Accountant"
+                    : path.StartsWith("/api/v1/service-contracts", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/v1/work-orders", StringComparison.OrdinalIgnoreCase)
+                        ? role is "Administrator" or "Manager" or "Service"
+                        : true;
+
+        if (!allowed)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
     }
     await next();
 });
