@@ -11,6 +11,7 @@ Namespace WecErp.Infrastructure
 
         Public Property Items As DbSet(Of Item)
         Public Property Customers As DbSet(Of Customer)
+        Public Property Users As DbSet(Of User)
         Public Property Suppliers As DbSet(Of Supplier)
         Public Property Quotations As DbSet(Of Quotation)
         Public Property QuotationLines As DbSet(Of QuotationLine)
@@ -51,6 +52,17 @@ Namespace WecErp.Infrastructure
             customer.Property(Function(x) x.IsActive).IsRequired()
             customer.Property(Function(x) x.CreatedUtc).IsRequired()
             customer.HasIndex(Function(x) x.Code).IsUnique()
+
+            Dim user = modelBuilder.Entity(Of User)()
+            user.ToTable("Users")
+            user.HasKey(Function(x) x.Id)
+            user.Property(Function(x) x.UserName).HasMaxLength(100).IsRequired()
+            user.HasIndex(Function(x) x.UserName).IsUnique()
+            user.Property(Function(x) x.DisplayName).HasMaxLength(200).IsRequired()
+            user.Property(Function(x) x.PasswordHash).HasMaxLength(500).IsRequired()
+            user.Property(Function(x) x.Role).IsRequired()
+            user.Property(Function(x) x.IsActive).IsRequired()
+            user.Property(Function(x) x.CreatedUtc).IsRequired()
 
             Dim supplier = modelBuilder.Entity(Of Supplier)()
             supplier.ToTable("Suppliers")
