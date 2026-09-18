@@ -17,6 +17,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="....srcWecErp.ApiWecErp.Api.csproj" />
+    <ProjectReference Include="..\..\src\WecErp.Api\WecErp.Api.csproj" />
   </ItemGroup>
 </Project>
