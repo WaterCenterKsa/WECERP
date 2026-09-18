@@ -72,7 +72,7 @@ public sealed class EndToEndSqlTests
         var live = await client.GetAsync("/api/v1/health/live");
         Assert.Equal(200, (int)live.StatusCode);
 
-        var bootstrap = await PostJsonAsync(client, "/api/v1/auth/bootstrap", new
+        var bootstrap = await PostJsonAsync(client, "/api/v1/client/bootstrap", new
         {
             UserName = "admin",
             DisplayName = "SQL Test Administrator",
@@ -81,7 +81,7 @@ public sealed class EndToEndSqlTests
         }, null, "WEC-ERP-TEST-SETUP-2026");
         Assert.Equal(201, (int)bootstrap.StatusCode);
 
-        var login = await PostJsonAsync(client, "/api/v1/auth/login", new
+        var login = await PostJsonAsync(client, "/api/v1/client/login", new
         {
             UserName = "admin",
             Password = "WEC-ERP-Test-Password-2026!"
@@ -102,7 +102,7 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(201, (int)viewer.StatusCode);
 
-        var viewerLogin = await PostJsonAsync(client, "/api/v1/auth/login", new
+        var viewerLogin = await PostJsonAsync(client, "/api/v1/client/login", new
         {
             UserName = "viewer",
             Password = "WEC-ERP-Viewer-Password-2026!"
@@ -120,7 +120,7 @@ public sealed class EndToEndSqlTests
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var customer = await PostJsonAsync(auth, "/api/v1/customers", new
+        var customer = await PostJsonAsync(client, "/api/v1/customers", new
         {
             Code = "SQLTEST-C001",
             Name = "SQL Integration Customer",
@@ -131,7 +131,7 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)customer.StatusCode);
         var customerId = await GetGuidAsync(customer, "id");
 
-        var item = await PostJsonAsync(auth, "/api/v1/items", new
+        var item = await PostJsonAsync(client, "/api/v1/items", new
         {
             Sku = "SQLTEST-P001",
             Name = "SQL Integration Product",
@@ -140,7 +140,7 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)item.StatusCode);
         var itemId = await GetGuidAsync(item, "id");
 
-        var warehouse = await PostJsonAsync(auth, "/api/v1/warehouses", new
+        var warehouse = await PostJsonAsync(client, "/api/v1/warehouses", new
         {
             Code = "SQLTEST-W001",
             Name = "SQL Integration Warehouse"
@@ -148,7 +148,7 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)warehouse.StatusCode);
         var warehouseId = await GetGuidAsync(warehouse, "id");
 
-        var supplier = await PostJsonAsync(auth, "/api/v1/suppliers", new
+        var supplier = await PostJsonAsync(client, "/api/v1/suppliers", new
         {
             Code = "SQLTEST-S001",
             Name = "SQL Integration Supplier",
@@ -159,7 +159,7 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)supplier.StatusCode);
         var supplierId = await GetGuidAsync(supplier, "id");
 
-        var purchaseOrder = await PostJsonAsync(auth, "/api/v1/purchase-orders", new
+        var purchaseOrder = await PostJsonAsync(client, "/api/v1/purchase-orders", new
         {
             SupplierId = supplierId,
             CurrencyCode = "SAR",
@@ -174,10 +174,10 @@ public sealed class EndToEndSqlTests
         var purchaseOrderId = purchaseOrderJson.RootElement.GetProperty("id").GetGuid();
         var purchaseOrderLineId = purchaseOrderJson.RootElement.GetProperty("lines")[0].GetProperty("id").GetGuid();
 
-        var confirmedPurchase = await PostJsonAsync(auth, $"/api/v1/purchase-orders/{purchaseOrderId}/status", new { Status = "Confirmed" });
+        var confirmedPurchase = await PostJsonAsync(client, $"/api/v1/purchase-orders/{purchaseOrderId}/status", new { Status = "Confirmed" });
         Assert.Equal(200, (int)confirmedPurchase.StatusCode);
 
-        var receipt = await PostJsonAsync(auth, $"/api/v1/purchase-orders/{purchaseOrderId}/receive", new
+        var receipt = await PostJsonAsync(client, $"/api/v1/purchase-orders/{purchaseOrderId}/receive", new
         {
             WarehouseId = warehouseId,
             Lines = new[] { new { PurchaseOrderLineId = purchaseOrderLineId, Quantity = 5m } }
@@ -190,7 +190,7 @@ public sealed class EndToEndSqlTests
         var onHandAfterReceipt = balanceJson.RootElement.GetProperty("balances")[0].GetProperty("onHand").GetDecimal();
         Assert.Equal(5m, onHandAfterReceipt);
 
-        var quotation = await PostJsonAsync(auth, "/api/v1/quotations", new
+        var quotation = await PostJsonAsync(client, "/api/v1/quotations", new
         {
             CustomerId = customerId,
             CurrencyCode = "SAR",
@@ -205,24 +205,24 @@ public sealed class EndToEndSqlTests
         var quotationId = quotationJson.RootElement.GetProperty("id").GetGuid();
         Assert.Equal(345m, quotationJson.RootElement.GetProperty("total").GetDecimal());
 
-        var acceptedQuotation = await PostJsonAsync(auth, $"/api/v1/quotations/{quotationId}/status", new { Status = "Accepted" });
+        var acceptedQuotation = await PostJsonAsync(client, $"/api/v1/quotations/{quotationId}/status", new { Status = "Accepted" });
         Assert.Equal(200, (int)acceptedQuotation.StatusCode);
 
-        var salesOrder = await PostJsonAsync(auth, $"/api/v1/quotations/{quotationId}/convert-to-order", new { });
+        var salesOrder = await PostJsonAsync(client, $"/api/v1/quotations/{quotationId}/convert-to-order", new { });
         Assert.Equal(201, (int)salesOrder.StatusCode);
         var salesOrderId = await GetGuidAsync(salesOrder, "id");
 
-        var confirmedOrder = await PostJsonAsync(auth, $"/api/v1/sales-orders/{salesOrderId}/status", new { Status = "Confirmed" });
+        var confirmedOrder = await PostJsonAsync(client, $"/api/v1/sales-orders/{salesOrderId}/status", new { Status = "Confirmed" });
         Assert.Equal(200, (int)confirmedOrder.StatusCode);
 
-        var fulfilled = await PostJsonAsync(auth, $"/api/v1/sales-orders/{salesOrderId}/fulfill", new { WarehouseId = warehouseId });
+        var fulfilled = await PostJsonAsync(client, $"/api/v1/sales-orders/{salesOrderId}/fulfill", new { WarehouseId = warehouseId });
         Assert.Equal(200, (int)fulfilled.StatusCode);
 
-        var invoice = await PostJsonAsync(auth, "/api/v1/invoices/from-sales-order", new { SalesOrderId = salesOrderId });
+        var invoice = await PostJsonAsync(client, "/api/v1/invoices/from-sales-order", new { SalesOrderId = salesOrderId });
         Assert.Equal(201, (int)invoice.StatusCode);
         var invoiceId = await GetGuidAsync(invoice, "id");
 
-        var payment = await PostJsonAsync(auth, $"/api/v1/invoices/{invoiceId}/payments", new
+        var payment = await PostJsonAsync(client, $"/api/v1/invoices/{invoiceId}/payments", new
         {
             Amount = 345m,
             Method = "Test",
@@ -230,13 +230,13 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(201, (int)payment.StatusCode);
 
-        var invoiceDetails = await auth.GetAsync($"/api/v1/invoices/{invoiceId}");
+        var invoiceDetails = await client.GetAsync($"/api/v1/invoices/{invoiceId}");
         Assert.Equal(200, (int)invoiceDetails.StatusCode);
         using var invoiceJson = JsonDocument.Parse(await invoiceDetails.Content.ReadAsStringAsync());
         Assert.Equal("Paid", invoiceJson.RootElement.GetProperty("status").GetString());
         Assert.Equal(345m, invoiceJson.RootElement.GetProperty("paidAmount").GetDecimal());
 
-        var resource = await PostJsonAsync(auth, "/api/v1/resources", new
+        var resource = await PostJsonAsync(client, "/api/v1/resources", new
         {
             Code = "SQLTEST-R001",
             Name = "SQL Test Resource",
@@ -248,7 +248,7 @@ public sealed class EndToEndSqlTests
 
         var start = DateTimeOffset.UtcNow.AddHours(1);
         var end = start.AddHours(1);
-        var booking = await PostJsonAsync(auth, "/api/v1/bookings", new
+        var booking = await PostJsonAsync(client, "/api/v1/bookings", new
         {
             CustomerId = customerId,
             ItemId = itemId,
@@ -259,7 +259,7 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(201, (int)booking.StatusCode);
 
-        var overlappingBooking = await PostJsonAsync(auth, "/api/v1/bookings", new
+        var overlappingBooking = await PostJsonAsync(client, "/api/v1/bookings", new
         {
             CustomerId = customerId,
             ItemId = itemId,
@@ -270,7 +270,7 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(409, (int)overlappingBooking.StatusCode);
 
-        var project = await PostJsonAsync(auth, "/api/v1/projects", new
+        var project = await PostJsonAsync(client, "/api/v1/projects", new
         {
             CustomerId = customerId,
             Name = "SQL Integration Project",
@@ -283,7 +283,7 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)project.StatusCode);
         var projectId = await GetGuidAsync(project, "id");
 
-        var task = await PostJsonAsync(auth, $"/api/v1/projects/{projectId}/tasks", new
+        var task = await PostJsonAsync(client, $"/api/v1/projects/{projectId}/tasks", new
         {
             Name = "SQL integration task",
             Sequence = 1,
@@ -292,13 +292,13 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)task.StatusCode);
         var taskId = await GetGuidAsync(task, "id");
 
-        var completedTask = await PostJsonAsync(auth, $"/api/v1/projects/{projectId}/tasks/{taskId}/completion", new { Completed = true });
+        var completedTask = await PostJsonAsync(client, $"/api/v1/projects/{projectId}/tasks/{taskId}/completion", new { Completed = true });
         Assert.Equal(200, (int)completedTask.StatusCode);
 
-        var activatedProject = await PostJsonAsync(auth, $"/api/v1/projects/{projectId}/status", new { Status = "Active" });
+        var activatedProject = await PostJsonAsync(client, $"/api/v1/projects/{projectId}/status", new { Status = "Active" });
         Assert.Equal(200, (int)activatedProject.StatusCode);
 
-        var serviceContract = await PostJsonAsync(auth, "/api/v1/service-contracts", new
+        var serviceContract = await PostJsonAsync(client, "/api/v1/service-contracts", new
         {
             CustomerId = customerId,
             StartsOn = DateOnly.FromDateTime(DateTime.UtcNow.Date),
@@ -309,10 +309,10 @@ public sealed class EndToEndSqlTests
         Assert.Equal(201, (int)serviceContract.StatusCode);
         var serviceContractId = await GetGuidAsync(serviceContract, "id");
 
-        var activatedContract = await PostJsonAsync(auth, $"/api/v1/service-contracts/{serviceContractId}/activate", new { });
+        var activatedContract = await PostJsonAsync(client, $"/api/v1/service-contracts/{serviceContractId}/activate", new { });
         Assert.Equal(200, (int)activatedContract.StatusCode);
 
-        var generated = await PostJsonAsync(auth, $"/api/v1/service-contracts/{serviceContractId}/generate-work-orders", new
+        var generated = await PostJsonAsync(client, $"/api/v1/service-contracts/{serviceContractId}/generate-work-orders", new
         {
             FirstVisitUtc = DateTimeOffset.UtcNow.AddHours(2),
             DurationMinutes = 60,
@@ -322,7 +322,7 @@ public sealed class EndToEndSqlTests
         using var generatedJson = await ParseAsync(generated);
         Assert.True(generatedJson.RootElement.GetProperty("generated").GetInt32() > 0);
 
-        var finalBalance = await auth.GetAsync($"/api/v1/inventory/balances?itemId={itemId}&warehouseId={warehouseId}");
+        var finalBalance = await client.GetAsync($"/api/v1/inventory/balances?itemId={itemId}&warehouseId={warehouseId}");
         Assert.Equal(200, (int)finalBalance.StatusCode);
         using var finalBalanceJson = JsonDocument.Parse(await finalBalance.Content.ReadAsStringAsync());
         var onHandAfterSale = finalBalanceJson.RootElement.GetProperty("balances")[0].GetProperty("onHand").GetDecimal();
