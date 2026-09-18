@@ -76,7 +76,7 @@ public static class InvoiceEndpoints
             ErpDbContext db,
             CancellationToken ct) =>
         {
-            if (request.Amount <= 0D) return Results.BadRequest(new { error = "Payment amount must be greater than zero." });
+            if (request.Amount <= 0m) return Results.BadRequest(new { error = "Payment amount must be greater than zero." });
             if (string.IsNullOrWhiteSpace(request.Method)) return Results.BadRequest(new { error = "Payment method is required." });
 
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
