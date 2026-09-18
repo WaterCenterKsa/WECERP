@@ -1,30 +1,40 @@
 $ErrorActionPreference = "Stop"
 
-# Releases ports used by WEC ERP development without touching unrelated applications.
-$ports = @(7000, 7001, 7010, 7011)
-$connections = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
-    Where-Object { $ports -contains $_.LocalPort } |
-    Sort-Object OwningProcess, LocalPort -Unique
+# WEC ERP development processes that may keep build outputs locked.
+$processes = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.Name -eq "WecErp.Api.exe" -or
+        ($_.Name -eq "dotnet.exe" -and $_.CommandLine -match "(?i)WecErp[\\/]Api")
+    }
 
-if (-not $connections) {
-    Write-Host "No WEC ERP development ports are currently listening."
+if (-not $processes) {
+    Write-Host "No running WEC ERP API process was found."
     exit 0
 }
 
-foreach ($connection in $connections) {
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $($connection.OwningProcess)" -ErrorAction SilentlyContinue
+foreach ($process in $processes) {
+    Write-Host "Stopping WEC ERP API process $($process.ProcessId) ($($process.Name))..."
 
-    if ($process -and (
-        $process.Name -eq "WecErp.Api.exe" -or
-        ($process.Name -eq "dotnet.exe" -and $process.CommandLine -match "WecErp.Api")
-    )) {
-        Write-Host "Stopping WEC ERP API process $($process.ProcessId) on port $($connection.LocalPort)..."
-        Stop-Process -Id $process.ProcessId -Force
+    try {
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
     }
-    else {
-        $name = if ($process) { $process.Name } else { "<unknown>" }
-        Write-Warning "Port $($connection.LocalPort) is used by PID $($connection.OwningProcess) ($name), which does not appear to be WEC ERP. It was not stopped."
+    catch {
+        Write-Warning "Failed to stop process $($process.ProcessId): $($_.Exception.Message)"
     }
 }
 
-Write-Host "WEC ERP API port cleanup complete."
+Start-Sleep -Milliseconds 500
+
+# Verify that the matching processes are gone before MSBuild tries to copy DLLs.
+$remaining = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.Name -eq "WecErp.Api.exe" -or
+        ($_.Name -eq "dotnet.exe" -and $_.CommandLine -match "(?i)WecErp[\\/]Api")
+    }
+
+if ($remaining) {
+    $ids = ($remaining | ForEach-Object ProcessId) -join ", "
+    throw "WEC ERP API process(es) are still running: $ids"
+}
+
+Write-Host "WEC ERP API process cleanup complete."
