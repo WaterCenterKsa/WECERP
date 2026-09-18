@@ -87,6 +87,29 @@ public static class IdentityEndpoints
             }});
         });
 
+        app.MapPost("/api/v1/users", async (
+            CreateUserRequest request,
+            [FromServices] UserService service,
+            ErpDbContext db,
+            CancellationToken ct) =>
+        {
+            if (!string.Equals(request.Password, request.Password.Trim(), StringComparison.Ordinal))
+                return Results.BadRequest(new { error = "Password contains leading or trailing whitespace." });
+
+            var error = service.ValidateNewUser(request);
+            if (!string.IsNullOrEmpty(error))
+                return Results.BadRequest(new { error });
+
+            var userName = request.UserName.Trim();
+            if (await db.Users.AnyAsync(x => x.UserName == userName, ct))
+                return Results.Conflict(new { error = "A user with this username already exists." });
+
+            var user = service.CreateEntity(request);
+            db.Users.Add(user);
+            await db.SaveChangesAsync(ct);
+            return Results.Created($"/api/v1/users/{user.Id}", service.ToDto(user));
+        }).RequireAuthorization(new AuthorizeAttribute { Roles = "Administrator" });
+
         app.MapGet("/api/v1/users", async (ErpDbContext db, CancellationToken ct) =>
             Results.Ok(new { users = await db.Users.AsNoTracking().OrderBy(x => x.UserName).Select(x => new UserDto {
                 Id = x.Id, UserName = x.UserName, DisplayName = x.DisplayName, Role = x.Role,
