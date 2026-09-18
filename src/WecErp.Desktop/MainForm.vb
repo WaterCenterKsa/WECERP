@@ -37,7 +37,7 @@ Public Class MainForm
     Private Sub BuildHeader()
         Dim header = New Panel With {
             .Dock = DockStyle.Top,
-            .Height = 76,
+            .Height = 104,
             .Padding = New Padding(20, 14, 20, 10)
         }
 
@@ -83,7 +83,7 @@ Public Class MainForm
         statusLabel.Width = 1000
         statusLabel.Height = 20
         statusLabel.Left = 300
-        statusLabel.Top = 49
+        statusLabel.Top = 78
         statusLabel.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
         statusLabel.Text = "Not checked"
 
