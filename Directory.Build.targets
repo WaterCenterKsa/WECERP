@@ -1,7 +1,7 @@
 <Project>
   <Target
     Name="StopExistingWecErpApiBeforeDebugBuild"
-    BeforeTargets="Build"
+    BeforeTargets="PrepareForBuild"
     Condition="'$(OS)' == 'Windows_NT' And '$(Configuration)' == 'Debug' And '$(WecErpSkipProcessCleanup)' != 'true'">
     <Exec
       Command='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildThisFileDirectory)scripts\Stop-WecErpApi.ps1"'
