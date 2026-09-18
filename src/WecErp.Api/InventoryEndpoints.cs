@@ -177,6 +177,9 @@ public static class InventoryEndpoints
             if (request.Type == InventoryMovementType.ReleaseReservation && reserved < request.Quantity)
                 return Results.Conflict(new { error = "Cannot release more stock than is currently reserved." });
 
+            if (request.Type == InventoryMovementType.Reservation && signedOnHand - reserved < request.Quantity)
+                return Results.Conflict(new { error = "Insufficient available stock to reserve." });
+
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
             var movement = service.CreateMovement(request, request.Type, request.WarehouseId);
@@ -221,7 +224,7 @@ public static class InventoryEndpoints
                       x.Type == InventoryMovementType.TransferOut ||
                       x.Type == InventoryMovementType.AdjustmentDecrease
                         ? -x.Quantity
-                        : 0D,
+                        : 0m,
                 cancellationToken);
     }
 
@@ -238,7 +241,7 @@ public static class InventoryEndpoints
                     ? x.Quantity
                     : x.Type == InventoryMovementType.ReleaseReservation
                         ? -x.Quantity
-                        : 0D,
+                        : 0m,
                 cancellationToken);
     }
 }
