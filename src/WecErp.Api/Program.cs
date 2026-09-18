@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
@@ -26,7 +27,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("ConnectionStrings:ErpDatabase cannot be empty.");
 
 builder.Services.AddDbContext<ErpDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly("WecErp.Infrastructure.Migrations")));
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<QuotationService>();
@@ -69,6 +70,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -537,7 +545,7 @@ app.MapGet("/api/v1/bookings", async (
 
 app.MapPost("/api/v1/bookings", async (
     CreateBookingRequest request,
-    BookingService service,
+    [FromServices] BookingService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
