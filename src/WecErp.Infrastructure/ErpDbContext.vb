@@ -158,6 +158,7 @@ Namespace WecErp.Infrastructure
             invoice.HasKey(Function(x) x.Id)
             invoice.Property(Function(x) x.Number).HasMaxLength(60).IsRequired()
             invoice.HasIndex(Function(x) x.Number).IsUnique()
+            invoice.HasIndex(Function(x) x.SourceSalesOrderId).IsUnique().HasFilter("[SourceSalesOrderId] IS NOT NULL")
             invoice.Property(Function(x) x.CurrencyCode).HasMaxLength(3).IsRequired()
             invoice.Property(Function(x) x.Subtotal).HasPrecision(19, 4)
             invoice.Property(Function(x) x.TaxAmount).HasPrecision(19, 4)
