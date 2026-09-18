@@ -11,6 +11,7 @@ Namespace WecErp.Infrastructure
 
         Public Property Items As DbSet(Of Item)
         Public Property Customers As DbSet(Of Customer)
+        Public Property Suppliers As DbSet(Of Supplier)
         Public Property Quotations As DbSet(Of Quotation)
         Public Property QuotationLines As DbSet(Of QuotationLine)
         Public Property SalesOrders As DbSet(Of SalesOrder)
@@ -47,6 +48,18 @@ Namespace WecErp.Infrastructure
             customer.Property(Function(x) x.IsActive).IsRequired()
             customer.Property(Function(x) x.CreatedUtc).IsRequired()
             customer.HasIndex(Function(x) x.Code).IsUnique()
+
+            Dim supplier = modelBuilder.Entity(Of Supplier)()
+            supplier.ToTable("Suppliers")
+            supplier.HasKey(Function(x) x.Id)
+            supplier.Property(Function(x) x.Code).HasMaxLength(50).IsRequired()
+            supplier.Property(Function(x) x.Name).HasMaxLength(300).IsRequired()
+            supplier.Property(Function(x) x.Phone).HasMaxLength(50).IsRequired()
+            supplier.Property(Function(x) x.Email).HasMaxLength(320).IsRequired()
+            supplier.Property(Function(x) x.TaxNumber).HasMaxLength(50).IsRequired()
+            supplier.Property(Function(x) x.IsActive).IsRequired()
+            supplier.Property(Function(x) x.CreatedUtc).IsRequired()
+            supplier.HasIndex(Function(x) x.Code).IsUnique()
 
             Dim quotation = modelBuilder.Entity(Of Quotation)()
             quotation.ToTable("Quotations")
@@ -148,7 +161,7 @@ Namespace WecErp.Infrastructure
             purchaseOrder.Property(Function(x) x.Total).HasPrecision(19, 4)
             purchaseOrder.Property(Function(x) x.Notes).HasMaxLength(500).IsRequired()
             purchaseOrder.Property(Function(x) x.CreatedUtc).IsRequired()
-            purchaseOrder.HasOne(Of Customer)().WithMany().HasForeignKey(Function(x) x.SupplierId).OnDelete(DeleteBehavior.Restrict)
+            purchaseOrder.HasOne(Of Supplier)().WithMany().HasForeignKey(Function(x) x.SupplierId).OnDelete(DeleteBehavior.Restrict)
             purchaseOrder.HasMany(Function(x) x.Lines).WithOne().HasForeignKey(Function(x) x.PurchaseOrderId).OnDelete(DeleteBehavior.Cascade)
 
             Dim purchaseOrderLine = modelBuilder.Entity(Of PurchaseOrderLine)()
