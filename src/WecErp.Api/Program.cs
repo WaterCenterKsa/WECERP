@@ -12,6 +12,7 @@ using WecErp.Application.Suppliers;
 using WecErp.Application.Purchasing;
 using WecErp.Application.SalesOrders;
 using WecErp.Application.Service;
+using WecErp.Application.Projects;
 using WecErp.Domain;
 using WecErp.Infrastructure;
 
@@ -37,6 +38,7 @@ builder.Services.AddSingleton<InvoiceService>();
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ServiceService>();
+builder.Services.AddSingleton<ProjectService>();
 builder.Services.AddProblemDetails();
 
 var jwtKey = builder.Configuration["Identity:JwtKey"];
