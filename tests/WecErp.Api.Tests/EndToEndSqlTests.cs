@@ -117,6 +117,8 @@ public sealed class EndToEndSqlTests
         Assert.Equal(403, (int)viewerInventory.StatusCode);
         var viewerCustomers = await client.GetAsync("/api/v1/customers");
         Assert.Equal(200, (int)viewerCustomers.StatusCode);
+        var viewerAuditLogs = await client.GetAsync("/api/v1/audit-logs");
+        Assert.Equal(403, (int)viewerAuditLogs.StatusCode);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
