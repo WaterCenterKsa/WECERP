@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Projects;
 using WecErp.Domain;
@@ -18,7 +19,7 @@ public static class ProjectEndpoints
             return Results.Ok(new { page = currentPage, pageSize = size, total, projects });
         });
 
-        app.MapPost("/api/v1/projects", async (CreateProjectRequest request, ProjectService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/projects", async (CreateProjectRequest request, [FromServices] ProjectService service, ErpDbContext db, CancellationToken ct) =>
         {
             var error = service.ValidateProject(request);
             if (!string.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
@@ -30,7 +31,7 @@ public static class ProjectEndpoints
             return Results.Created($"/api/v1/projects/{project.Id}", project);
         });
 
-        app.MapPost("/api/v1/projects/{id:guid}/status", async (Guid id, ChangeProjectStatusRequest request, ProjectService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/projects/{id:guid}/status", async (Guid id, ChangeProjectStatusRequest request, [FromServices] ProjectService service, ErpDbContext db, CancellationToken ct) =>
         {
             var project = await db.Projects.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (project is null) return Results.NotFound(new { error = "Project not found." });
@@ -40,7 +41,7 @@ public static class ProjectEndpoints
             return Results.Ok(project);
         });
 
-        app.MapPost("/api/v1/projects/{id:guid}/tasks", async (Guid id, CreateProjectTaskRequest request, ProjectService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/projects/{id:guid}/tasks", async (Guid id, CreateProjectTaskRequest request, [FromServices] ProjectService service, ErpDbContext db, CancellationToken ct) =>
         {
             var project = await db.Projects.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (project is null) return Results.NotFound(new { error = "Project not found." });
