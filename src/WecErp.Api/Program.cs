@@ -1,4 +1,7 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
 using WecErp.Application.Items;
@@ -30,11 +33,51 @@ builder.Services.AddSingleton<InventoryService>();
 builder.Services.AddSingleton<SupplierService>();
 builder.Services.AddSingleton<PurchaseOrderService>();
 builder.Services.AddSingleton<InvoiceService>();
+builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddSingleton<UserService>();
 builder.Services.AddProblemDetails();
+
+var jwtKey = builder.Configuration["Identity:JwtKey"];
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+    throw new InvalidOperationException("Identity:JwtKey must be configured with at least 32 UTF-8 bytes.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Identity:Issuer"] ?? "WEC-ERP",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Identity:Audience"] ?? "WEC-ERP-Desktop",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/v1") &&
+        !context.Request.Path.StartsWithSegments("/api/v1/health") &&
+        !context.Request.Path.StartsWithSegments("/api/v1/auth"))
+    {
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+    }
+    await next();
+});
 app.UseExceptionHandler();
 
 app.MapGet("/api/v1/health/live", () => Results.Ok(new
@@ -53,6 +96,7 @@ app.MapGet("/api/v1/health/ready", async (ErpDbContext db, CancellationToken can
         : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 });
 
+app.MapIdentityEndpoints();
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesOrderEndpoints();
