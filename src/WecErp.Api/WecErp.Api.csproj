@@ -10,9 +10,4 @@
     <ProjectReference Include="..\WecErp.Application\WecErp.Application.vbproj" />
     <ProjectReference Include="..\WecErp.Infrastructure\WecErp.Infrastructure.vbproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="WecErp.Application">
-      <HintPath>..\WecErp.Application\bin\$(Configuration)\net10.0\WecErp.Application.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 </Project>
