@@ -1,4 +1,5 @@
 using System.Text;
+using System.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -625,25 +626,38 @@ app.MapPost("/api/v1/bookings", async (
             return Results.BadRequest(new { error = "Resource does not exist or is inactive." });
     }
 
-    if (request.ResourceId.HasValue)
+    Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? bookingTransaction = null;
+    try
     {
-        var conflict = await db.Bookings.AnyAsync(x =>
-            x.ResourceId == request.ResourceId.Value &&
-            x.Status != BookingStatus.Cancelled &&
-            x.StartsUtc < request.EndsUtc &&
-            x.EndsUtc > request.StartsUtc,
-            cancellationToken);
+        if (request.ResourceId.HasValue)
+        {
+            bookingTransaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        if (conflict)
-            return Results.Conflict(new { error = "The selected resource is already booked during this time." });
+            var conflict = await db.Bookings.AnyAsync(x =>
+                x.ResourceId == request.ResourceId.Value &&
+                x.Status != BookingStatus.Cancelled &&
+                x.StartsUtc < request.EndsUtc &&
+                x.EndsUtc > request.StartsUtc,
+                cancellationToken);
+
+            if (conflict)
+                return Results.Conflict(new { error = "The selected resource is already booked during this time." });
+        }
+
+        var booking = service.CreateEntity(request);
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (bookingTransaction is not null)
+            await bookingTransaction.CommitAsync(cancellationToken);
+
+        return Results.Created($"/api/v1/bookings/{booking.Id}", service.ToDto(booking));
     }
-
-    var booking = service.CreateEntity(request);
-    db.Bookings.Add(booking);
-    await db.SaveChangesAsync(cancellationToken);
-
-    return Results.Created($"/api/v1/bookings/{booking.Id}", service.ToDto(booking));
-});
+    finally
+    {
+        if (bookingTransaction is not null)
+            await bookingTransaction.DisposeAsync();
+    }
 
 app.Run();
 
