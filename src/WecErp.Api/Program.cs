@@ -13,6 +13,7 @@ using WecErp.Application.Purchasing;
 using WecErp.Application.SalesOrders;
 using WecErp.Application.Service;
 using WecErp.Application.Projects;
+using WecErp.Application.Identity;
 using WecErp.Domain;
 using WecErp.Infrastructure;
 
