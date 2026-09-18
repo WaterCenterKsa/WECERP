@@ -90,6 +90,7 @@ Public Class MainForm
         AddNavigationButton("Warehouses", "/api/v1/warehouses")
         AddNavigationButton("Inventory", "/api/v1/inventory/balances")
         AddNavigationButton("Purchase Orders", "/api/v1/purchase-orders")
+        AddNavigationButton("Invoices", "/api/v1/invoices")
 
         Controls.Add(navigationPanel)
     End Sub
@@ -151,6 +152,7 @@ Public Class MainForm
         table.Rows.Add("Warehouses", "Ready", "GET /api/v1/warehouses")
         table.Rows.Add("Inventory", "Ready", "GET /api/v1/inventory/balances")
         table.Rows.Add("Purchase Orders", "Ready", "GET /api/v1/purchase-orders")
+        table.Rows.Add("Invoices", "Ready", "GET /api/v1/invoices")
         grid.DataSource = table
     End Sub
 
@@ -241,6 +243,13 @@ Public Class MainForm
                 table.Columns.Add("Status")
                 table.Columns.Add("Currency")
                 table.Columns.Add("Total")
+            Case "/api/v1/invoices"
+                table.Columns.Add("Number")
+                table.Columns.Add("Customer ID")
+                table.Columns.Add("Status")
+                table.Columns.Add("Currency")
+                table.Columns.Add("Total")
+                table.Columns.Add("Paid")
         End Select
 
         Return table
@@ -272,6 +281,8 @@ Public Class MainForm
                     arrayProperty = "balances"
                 Case "/api/v1/purchase-orders"
                     arrayProperty = "purchaseOrders"
+                Case "/api/v1/invoices"
+                    arrayProperty = "invoices"
                 Case Else
                     Return
             End Select
@@ -301,6 +312,8 @@ Public Class MainForm
                         table.Rows.Add(GetString(record, "itemId"), GetString(record, "warehouseId"), GetString(record, "onHand"), GetString(record, "reserved"), GetString(record, "available"))
                     Case "/api/v1/purchase-orders"
                         table.Rows.Add(GetString(record, "number"), GetString(record, "supplierId"), GetString(record, "status"), GetString(record, "currencyCode"), GetString(record, "total"))
+                    Case "/api/v1/invoices"
+                        table.Rows.Add(GetString(record, "number"), GetString(record, "customerId"), GetString(record, "status"), GetString(record, "currencyCode"), GetString(record, "total"), GetString(record, "paidAmount"))
                 End Select
             Next
         End Using
