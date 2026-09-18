@@ -231,6 +231,9 @@ public sealed class EndToEndSqlTests
         var quotationId = quotationJson.RootElement.GetProperty("id").GetGuid();
         Assert.Equal(345m, quotationJson.RootElement.GetProperty("total").GetDecimal());
 
+        var sentQuotation = await PostJsonAsync(client, $"/api/v1/quotations/{quotationId}/status", new { Status = "Sent" });
+        Assert.Equal(200, (int)sentQuotation.StatusCode);
+
         var acceptedQuotation = await PostJsonAsync(client, $"/api/v1/quotations/{quotationId}/status", new { Status = "Accepted" });
         Assert.Equal(200, (int)acceptedQuotation.StatusCode);
 
