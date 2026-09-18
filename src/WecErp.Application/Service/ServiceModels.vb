@@ -12,6 +12,8 @@ Namespace WecErp.Application.Service
     Public Class CreateWorkOrderRequest
         Public Property CustomerId As Guid
         Public Property ServiceContractId As Guid?
+        Public Property SiteId As Guid?
+        Public Property AssetId As Guid?
         Public Property ScheduledStartUtc As DateTimeOffset?
         Public Property ScheduledEndUtc As DateTimeOffset?
         Public Property Description As String = String.Empty
