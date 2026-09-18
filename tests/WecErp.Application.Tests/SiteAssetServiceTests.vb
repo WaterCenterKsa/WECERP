@@ -48,7 +48,7 @@ Namespace WecErp.Application.Tests
             Assert.Equal(customerId, asset.CustomerId)
             Assert.Equal(siteId, asset.SiteId)
             Assert.Equal("SN-1", asset.SerialNumber)
-            Assert.Equal(0D, asset.InstalledOn.GetValueOrDefault().Day)
+            Assert.False(asset.InstalledOn.HasValue)
         End Sub
     End Class
 End Namespace
