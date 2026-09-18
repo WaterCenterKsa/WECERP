@@ -83,6 +83,8 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsEnvironment("Testing"))
     app.UseHttpsRedirection();
 
+app.UseExceptionHandler();
+
 app.Use(async (context, next) =>
 {
     try
@@ -135,7 +137,6 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 
