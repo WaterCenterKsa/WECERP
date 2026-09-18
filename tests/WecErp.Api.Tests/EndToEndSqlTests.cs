@@ -91,7 +91,7 @@ public sealed class EndToEndSqlTests
         var token = loginJson.RootElement.GetProperty("accessToken").GetString();
         Assert.False(string.IsNullOrWhiteSpace(token));
 
-        using var auth = new HttpClient(client.BaseAddress) { DefaultRequestHeaders = { Authorization = new AuthenticationHeaderValue("Bearer", token) } };
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var customer = await PostJsonAsync(auth, "/api/v1/customers", new
         {
@@ -157,7 +157,7 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(201, (int)receipt.StatusCode);
 
-        var balance = await auth.GetAsync($"/api/v1/inventory/balances?itemId={itemId}&warehouseId={warehouseId}");
+        var balance = await client.GetAsync($"/api/v1/inventory/balances?itemId={itemId}&warehouseId={warehouseId}");
         Assert.Equal(200, (int)balance.StatusCode);
         using var balanceJson = JsonDocument.Parse(await balance.Content.ReadAsStringAsync());
         var onHandAfterReceipt = balanceJson.RootElement.GetProperty("balances")[0].GetProperty("onHand").GetDecimal();
