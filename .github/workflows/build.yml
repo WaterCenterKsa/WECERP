@@ -26,6 +26,9 @@ jobs:
       - name: Restore
         run: dotnet restore WecErp.sln
 
+      - name: Restore Tests
+        run: dotnet restore tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj
+
       - name: Build Domain
         run: dotnet build src/WecErp.Domain/WecErp.Domain.vbproj --configuration Release --no-restore
 
