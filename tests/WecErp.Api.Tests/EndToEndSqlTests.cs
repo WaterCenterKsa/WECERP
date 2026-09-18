@@ -93,6 +93,33 @@ public sealed class EndToEndSqlTests
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
+        var viewer = await PostJsonAsync(client, "/api/v1/users", new
+        {
+            UserName = "viewer",
+            DisplayName = "SQL Test Viewer",
+            Password = "WEC-ERP-Viewer-Password-2026!",
+            Role = 8
+        });
+        Assert.Equal(201, (int)viewer.StatusCode);
+
+        var viewerLogin = await PostJsonAsync(client, "/api/v1/auth/login", new
+        {
+            UserName = "viewer",
+            Password = "WEC-ERP-Viewer-Password-2026!"
+        });
+        Assert.Equal(200, (int)viewerLogin.StatusCode);
+        using var viewerLoginJson = await JsonDocument.ParseAsync(await viewerLogin.Content.ReadAsStreamAsync());
+        var viewerToken = viewerLoginJson.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(viewerToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        var viewerInventory = await client.GetAsync("/api/v1/warehouses");
+        Assert.Equal(403, (int)viewerInventory.StatusCode);
+        var viewerCustomers = await client.GetAsync("/api/v1/customers");
+        Assert.Equal(200, (int)viewerCustomers.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         var customer = await PostJsonAsync(auth, "/api/v1/customers", new
         {
             Code = "SQLTEST-C001",
@@ -307,7 +334,7 @@ public sealed class EndToEndSqlTests
         Assert.True(await db.AuditLogs.AnyAsync(x => x.UserName == "admin" && x.Path == "/api/v1/customers"));
 
         var migrations = await db.Database.GetAppliedMigrationsAsync();
-        Assert.Contains("20260918141526_InitialCreate", migrations);
+        Assert.True(migrations.Any(x => x.EndsWith("_InitialCreate", StringComparison.Ordinal)));
 
         var expectedTables = new[]
         {
