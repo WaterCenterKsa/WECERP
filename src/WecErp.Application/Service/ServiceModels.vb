@@ -20,4 +20,10 @@ Namespace WecErp.Application.Service
     Public Class ChangeWorkOrderStatusRequest
         Public Property Status As String = String.Empty
     End Class
+
+    Public Class GenerateWorkOrdersRequest
+        Public Property FirstVisitUtc As DateTimeOffset
+        Public Property DurationMinutes As Integer = 60
+        Public Property Description As String = String.Empty
+    End Class
 End Namespace
