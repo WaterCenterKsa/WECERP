@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Inventory;
@@ -12,7 +13,7 @@ public static class SalesOrderEndpoints
         app.MapPost("/api/v1/sales-orders/{id:guid}/status", async (
             Guid id,
             ChangeSalesOrderStatusRequest request,
-            SalesOrderService service,
+            [FromServices] SalesOrderService service,
             ErpDbContext db,
             CancellationToken ct) =>
         {

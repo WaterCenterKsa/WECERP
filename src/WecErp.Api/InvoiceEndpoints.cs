@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Invoices;
@@ -35,7 +36,7 @@ public static class InvoiceEndpoints
 
         app.MapPost("/api/v1/invoices/from-sales-order", async (
             CreateInvoiceFromSalesOrderRequest request,
-            InvoiceService service,
+            [FromServices] InvoiceService service,
             ErpDbContext db,
             CancellationToken ct) =>
         {

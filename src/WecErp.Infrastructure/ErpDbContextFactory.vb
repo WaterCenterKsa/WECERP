@@ -9,7 +9,7 @@ Namespace WecErp.Infrastructure
         Public Function CreateDbContext(args As String()) As ErpDbContext Implements IDesignTimeDbContextFactory(Of ErpDbContext).CreateDbContext
             Dim connectionString = Environment.GetEnvironmentVariable("WECERP_DESIGN_CONNECTION")
             If String.IsNullOrWhiteSpace(connectionString) Then
-                connectionString = "Server=(localdb)\MSSQLLocalDB;Database=WecErp;Trusted_Connection=True;TrustServerCertificate=True"
+                connectionString = "Server=(localdb)\MSSQLLocalDB;Database=WecErp_Dev;Trusted_Connection=True;TrustServerCertificate=True"
             End If
 
             Dim options = New DbContextOptionsBuilder(Of ErpDbContext)().

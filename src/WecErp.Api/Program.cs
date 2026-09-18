@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using WecErp.Application.Bookings;
 using WecErp.Application.Customers;
@@ -26,7 +27,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("ConnectionStrings:ErpDatabase cannot be empty.");
 
 builder.Services.AddDbContext<ErpDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly("WecErp.Infrastructure.Migrations")));
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ItemService>();
 builder.Services.AddSingleton<QuotationService>();
@@ -69,6 +70,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -179,7 +187,7 @@ app.MapGet("/api/v1/items", async (
 
 app.MapPost("/api/v1/items", async (
     CreateItemRequest request,
-    ItemService service,
+    [FromServices] ItemService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -240,7 +248,7 @@ app.MapGet("/api/v1/customers", async (
 
 app.MapPost("/api/v1/customers", async (
     CreateCustomerRequest request,
-    CustomerService service,
+    [FromServices] CustomerService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -318,7 +326,7 @@ app.MapGet("/api/v1/quotations/{id:guid}", async (
 
 app.MapPost("/api/v1/quotations", async (
     CreateQuotationRequest request,
-    QuotationService service,
+    [FromServices] QuotationService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -348,7 +356,7 @@ app.MapPost("/api/v1/quotations", async (
 app.MapPost("/api/v1/quotations/{id:guid}/status", async (
     Guid id,
     ChangeQuotationStatusRequest request,
-    QuotationService service,
+    [FromServices] QuotationService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -426,7 +434,7 @@ app.MapGet("/api/v1/sales-orders/{id:guid}", async (
 
 app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
     Guid id,
-    SalesOrderService service,
+    [FromServices] SalesOrderService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -537,7 +545,7 @@ app.MapGet("/api/v1/bookings", async (
 
 app.MapPost("/api/v1/bookings", async (
     CreateBookingRequest request,
-    BookingService service,
+    [FromServices] BookingService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {

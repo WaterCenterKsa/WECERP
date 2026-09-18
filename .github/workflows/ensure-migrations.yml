@@ -1,0 +1,51 @@
+name: Ensure EF Core Migrations
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  ensure-migrations:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore WecErp.sln
+
+      - name: Restore EF Tools
+        run: dotnet tool restore
+
+      - name: Generate initial migration when missing
+        shell: pwsh
+        run: |
+          $migrationPath = "src/WecErp.Infrastructure.Migrations/Migrations"
+          if (-not (Test-Path $migrationPath) -or -not (Get-ChildItem $migrationPath -Filter "*_InitialCreate.cs" -File -ErrorAction SilentlyContinue)) {
+            dotnet ef migrations add InitialCreate --project src/WecErp.Infrastructure.Migrations/WecErp.Infrastructure.Migrations.csproj --startup-project src/WecErp.Infrastructure.Migrations/WecErp.Infrastructure.Migrations.csproj --context ErpDbContext
+          } else {
+            Write-Host "InitialCreate migration already exists."
+          }
+
+      - name: Commit generated migration
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WecErp.Infrastructure.Migrations/Migrations
+          if (git diff --cached --quiet) {
+            Write-Host "No migration changes to commit."
+          } else {
+            git commit -m "Add generated EF Core migration"
+            git push
+          }
