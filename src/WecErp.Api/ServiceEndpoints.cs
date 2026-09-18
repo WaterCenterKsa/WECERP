@@ -7,6 +7,53 @@ public static class ServiceEndpoints
 {
     public static void MapServiceEndpoints(this WebApplication app)
     {
+        app.MapGet("/api/v1/customer-sites", async (ErpDbContext db, Guid? customerId, CancellationToken ct) =>
+        {
+            var query = db.CustomerSites.AsNoTracking().Where(x => x.IsActive);
+            if (customerId.HasValue) query = query.Where(x => x.CustomerId == customerId.Value);
+            var sites = await query.OrderBy(x => x.Name).ToListAsync(ct);
+            return Results.Ok(new { sites });
+        });
+
+        app.MapPost("/api/v1/customer-sites", async (CreateCustomerSiteRequest request, SiteAssetService service, ErpDbContext db, CancellationToken ct) =>
+        {
+            var error = service.ValidateSite(request);
+            if (!string.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
+            if (!await db.Customers.AnyAsync(x => x.Id == request.CustomerId && x.IsActive, ct))
+                return Results.BadRequest(new { error = "Customer does not exist or is inactive." });
+            if (await db.CustomerSites.AnyAsync(x => x.CustomerId == request.CustomerId && x.Code == request.Code.Trim(), ct))
+                return Results.Conflict(new { error = "A site with this code already exists for the customer." });
+            var site = service.CreateSite(request);
+            db.CustomerSites.Add(site);
+            await db.SaveChangesAsync(ct);
+            return Results.Created($"/api/v1/customer-sites/{site.Id}", site);
+        });
+
+        app.MapGet("/api/v1/service-assets", async (ErpDbContext db, Guid? customerId, Guid? siteId, CancellationToken ct) =>
+        {
+            var query = db.ServiceAssets.AsNoTracking().Where(x => x.IsActive);
+            if (customerId.HasValue) query = query.Where(x => x.CustomerId == customerId.Value);
+            if (siteId.HasValue) query = query.Where(x => x.SiteId == siteId.Value);
+            var assets = await query.OrderBy(x => x.Name).ToListAsync(ct);
+            return Results.Ok(new { assets });
+        });
+
+        app.MapPost("/api/v1/service-assets", async (CreateServiceAssetRequest request, SiteAssetService service, ErpDbContext db, CancellationToken ct) =>
+        {
+            var error = service.ValidateAsset(request);
+            if (!string.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
+            if (!await db.Customers.AnyAsync(x => x.Id == request.CustomerId && x.IsActive, ct))
+                return Results.BadRequest(new { error = "Customer does not exist or is inactive." });
+            if (request.SiteId.HasValue && !await db.CustomerSites.AnyAsync(x => x.Id == request.SiteId.Value && x.CustomerId == request.CustomerId && x.IsActive, ct))
+                return Results.BadRequest(new { error = "Site does not exist, is inactive, or belongs to another customer." });
+            if (await db.ServiceAssets.AnyAsync(x => x.CustomerId == request.CustomerId && x.AssetNumber == request.AssetNumber.Trim(), ct))
+                return Results.Conflict(new { error = "An asset with this number already exists for the customer." });
+            var asset = service.CreateAsset(request);
+            db.ServiceAssets.Add(asset);
+            await db.SaveChangesAsync(ct);
+            return Results.Created($"/api/v1/service-assets/{asset.Id}", asset);
+        });
+
         app.MapGet("/api/v1/service-contracts", async (ErpDbContext db, int? page, int? pageSize, Guid? customerId, CancellationToken ct) =>
         {
             var currentPage = Math.Max(page ?? 1, 1);
@@ -85,6 +132,12 @@ public static class ServiceEndpoints
                 return Results.BadRequest(new { error = "Customer does not exist or is inactive." });
             if (request.ServiceContractId.HasValue && !await db.ServiceContracts.AnyAsync(x => x.Id == request.ServiceContractId.Value && x.Status == ServiceContractStatus.Active, ct))
                 return Results.BadRequest(new { error = "Service contract does not exist or is not active." });
+            if (request.SiteId.HasValue && !await db.CustomerSites.AnyAsync(x => x.Id == request.SiteId.Value && x.CustomerId == request.CustomerId && x.IsActive, ct))
+                return Results.BadRequest(new { error = "Site does not exist, is inactive, or belongs to another customer." });
+            if (request.AssetId.HasValue && !await db.ServiceAssets.AnyAsync(x => x.Id == request.AssetId.Value && x.CustomerId == request.CustomerId && x.IsActive, ct))
+                return Results.BadRequest(new { error = "Asset does not exist, is inactive, or belongs to another customer." });
+            if (request.AssetId.HasValue && request.SiteId.HasValue && !await db.ServiceAssets.AnyAsync(x => x.Id == request.AssetId.Value && x.SiteId == request.SiteId.Value, ct))
+                return Results.BadRequest(new { error = "Asset is not assigned to the selected site." });
 
             WorkOrder order;
             try { order = service.CreateWorkOrder(request); }
