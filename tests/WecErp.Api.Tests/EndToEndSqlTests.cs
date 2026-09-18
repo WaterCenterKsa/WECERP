@@ -299,6 +299,34 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(409, (int)overlappingBooking.StatusCode);
 
+
+        var concurrentResource = await PostJsonAsync(client, "/api/v1/resources", new
+        {
+            Code = "SQLTEST-R002",
+            Name = "SQL Concurrent Resource",
+            Type = 1,
+            IsActive = true
+        });
+        Assert.Equal(201, (int)concurrentResource.StatusCode);
+        var concurrentResourceId = await GetGuidAsync(concurrentResource, "id");
+
+        var concurrentStart = DateTimeOffset.UtcNow.AddHours(6);
+        var concurrentEnd = concurrentStart.AddHours(1);
+        var raceRequests = Enumerable.Range(0, 2).Select(_ => PostJsonAsync(client, "/api/v1/bookings", new
+        {
+            CustomerId = customerId,
+            ItemId = itemId,
+            ResourceId = concurrentResourceId,
+            StartsUtc = concurrentStart,
+            EndsUtc = concurrentEnd,
+            Notes = "SQL concurrent booking race"
+        })).ToArray();
+        var raceResponses = await Task.WhenAll(raceRequests);
+        var raceStatuses = raceResponses.Select(x => (int)x.StatusCode).OrderBy(x => x).ToArray();
+        Assert.Equal(new[] { 201, 409 }, raceStatuses);
+        foreach (var response in raceResponses) response.Dispose();
+        concurrentResource.Dispose();
+
         var project = await PostJsonAsync(client, "/api/v1/projects", new
         {
             CustomerId = customerId,
