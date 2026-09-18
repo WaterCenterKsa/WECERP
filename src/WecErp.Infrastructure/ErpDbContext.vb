@@ -338,7 +338,6 @@ Namespace WecErp.Infrastructure
             projectTask.Property(Function(x) x.Sequence).IsRequired()
             projectTask.Property(Function(x) x.IsCompleted).IsRequired()
             projectTask.Property(Function(x) x.EstimatedCost).HasPrecision(19, 4)
-            projectTask.Property(Function(x) x.ActualCost).HasPrecision(19, 4)
             projectTask.Property(Function(x) x.CreatedUtc).IsRequired()
 
             Dim movement = modelBuilder.Entity(Of InventoryMovement)()
