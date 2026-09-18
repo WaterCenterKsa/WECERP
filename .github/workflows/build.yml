@@ -97,8 +97,14 @@ jobs:
             sleep 2
           done
 
+          sql_container="$(docker ps -q --filter 'ancestor=mcr.microsoft.com/mssql/server:2022-latest' | head -n 1)"
+          if [ -z "$sql_container" ]; then
+            echo "SQL Server service container was not found."
+            exit 1
+          fi
+
           for i in {1..180}; do
-            if /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'WECERP_SqlTest_2026!' -C -d master -Q "SELECT 1" >/dev/null 2>&1; then
+            if docker exec "$sql_container" /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'WECERP_SqlTest_2026!' -C -d master -Q "SELECT 1" >/dev/null 2>&1; then
               echo "SQL Server accepts authenticated connections."
               exit 0
             fi
