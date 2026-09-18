@@ -72,7 +72,6 @@ Namespace WecErp.Application.Projects
                 .Sequence = request.Sequence,
                 .IsCompleted = False,
                 .EstimatedCost = Decimal.Round(request.EstimatedCost, 2, MidpointRounding.AwayFromZero),
-                .ActualCost = 0D,
                 .CreatedUtc = DateTimeOffset.UtcNow
             }
         End Function
