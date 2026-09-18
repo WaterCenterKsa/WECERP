@@ -187,7 +187,7 @@ app.MapGet("/api/v1/items", async (
 
 app.MapPost("/api/v1/items", async (
     CreateItemRequest request,
-    ItemService service,
+    [FromServices] ItemService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -248,7 +248,7 @@ app.MapGet("/api/v1/customers", async (
 
 app.MapPost("/api/v1/customers", async (
     CreateCustomerRequest request,
-    CustomerService service,
+    [FromServices] CustomerService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -326,7 +326,7 @@ app.MapGet("/api/v1/quotations/{id:guid}", async (
 
 app.MapPost("/api/v1/quotations", async (
     CreateQuotationRequest request,
-    QuotationService service,
+    [FromServices] QuotationService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -356,7 +356,7 @@ app.MapPost("/api/v1/quotations", async (
 app.MapPost("/api/v1/quotations/{id:guid}/status", async (
     Guid id,
     ChangeQuotationStatusRequest request,
-    QuotationService service,
+    [FromServices] QuotationService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
@@ -434,7 +434,7 @@ app.MapGet("/api/v1/sales-orders/{id:guid}", async (
 
 app.MapPost("/api/v1/quotations/{id:guid}/convert-to-order", async (
     Guid id,
-    SalesOrderService service,
+    [FromServices] SalesOrderService service,
     ErpDbContext db,
     CancellationToken cancellationToken) =>
 {
