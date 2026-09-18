@@ -36,5 +36,8 @@ jobs:
       - name: Build Desktop
         run: dotnet build src/WecErp.Desktop/WecErp.Desktop.vbproj --configuration Release --no-restore
 
+      - name: Build Tests
+        run: dotnet build tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-restore
+
       - name: Test
         run: dotnet test tests/WecErp.Application.Tests/WecErp.Application.Tests.vbproj --configuration Release --no-build --no-restore
