@@ -72,7 +72,7 @@ public sealed class EndToEndSqlTests
         var live = await client.GetAsync("/api/v1/health/live");
         Assert.Equal(200, (int)live.StatusCode);
 
-        var bootstrap = await PostJsonAsync(client, "/api/v1/client/bootstrap", new
+        var bootstrap = await PostJsonAsync(client, "/api/v1/auth/bootstrap", new
         {
             UserName = "admin",
             DisplayName = "SQL Test Administrator",
@@ -81,7 +81,7 @@ public sealed class EndToEndSqlTests
         }, null, "WEC-ERP-TEST-SETUP-2026");
         Assert.Equal(201, (int)bootstrap.StatusCode);
 
-        var login = await PostJsonAsync(client, "/api/v1/client/login", new
+        var login = await PostJsonAsync(client, "/api/v1/auth/login", new
         {
             UserName = "admin",
             Password = "WEC-ERP-Test-Password-2026!"
@@ -102,7 +102,7 @@ public sealed class EndToEndSqlTests
         });
         Assert.Equal(201, (int)viewer.StatusCode);
 
-        var viewerLogin = await PostJsonAsync(client, "/api/v1/client/login", new
+        var viewerLogin = await PostJsonAsync(client, "/api/v1/auth/login", new
         {
             UserName = "viewer",
             Password = "WEC-ERP-Viewer-Password-2026!"
