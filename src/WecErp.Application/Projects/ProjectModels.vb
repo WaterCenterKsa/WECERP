@@ -21,6 +21,14 @@ Namespace WecErp.Application.Projects
         Public Property EstimatedCost As Decimal
     End Class
 
+    Public Class UpdateProjectTaskCostRequest
+        Public Property ActualCost As Decimal
+    End Class
+
+    Public Class CompleteProjectTaskRequest
+        Public Property Completed As Boolean = True
+    End Class
+
     Public Class ProjectService
         Public Function ValidateProject(request As CreateProjectRequest) As String
             If request.CustomerId = Guid.Empty Then Return "CustomerId is required."
@@ -64,6 +72,7 @@ Namespace WecErp.Application.Projects
                 .Sequence = request.Sequence,
                 .IsCompleted = False,
                 .EstimatedCost = Decimal.Round(request.EstimatedCost, 2, MidpointRounding.AwayFromZero),
+                .ActualCost = 0D,
                 .CreatedUtc = DateTimeOffset.UtcNow
             }
         End Function
