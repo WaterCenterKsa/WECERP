@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WecErp.Application.Inventory;
@@ -26,7 +27,7 @@ public static class PurchasingEndpoints
             return Results.Ok(new { page = currentPage, pageSize = size, total, suppliers });
         });
 
-        app.MapPost("/api/v1/suppliers", async (CreateSupplierRequest request, SupplierService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/suppliers", async (CreateSupplierRequest request, [FromServices] SupplierService service, ErpDbContext db, CancellationToken ct) =>
         {
             var error = service.ValidateNewSupplier(request);
             if (!string.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
@@ -64,7 +65,7 @@ public static class PurchasingEndpoints
             return order is null ? Results.NotFound(new { error = "Purchase order not found." }) : Results.Ok(order);
         });
 
-        app.MapPost("/api/v1/purchase-orders", async (CreatePurchaseOrderRequest request, PurchaseOrderService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/purchase-orders", async (CreatePurchaseOrderRequest request, [FromServices] PurchaseOrderService service, ErpDbContext db, CancellationToken ct) =>
         {
             var error = service.ValidateNewOrder(request);
             if (!string.IsNullOrEmpty(error)) return Results.BadRequest(new { error });
@@ -82,7 +83,7 @@ public static class PurchasingEndpoints
             return Results.Created($"/api/v1/purchase-orders/{order.Id}", order);
         });
 
-        app.MapPost("/api/v1/purchase-orders/{id:guid}/status", async (Guid id, ChangePurchaseOrderStatusRequest request, PurchaseOrderService service, ErpDbContext db, CancellationToken ct) =>
+        app.MapPost("/api/v1/purchase-orders/{id:guid}/status", async (Guid id, ChangePurchaseOrderStatusRequest request, [FromServices] PurchaseOrderService service, ErpDbContext db, CancellationToken ct) =>
         {
             var order = await db.PurchaseOrders.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (order is null) return Results.NotFound(new { error = "Purchase order not found." });
