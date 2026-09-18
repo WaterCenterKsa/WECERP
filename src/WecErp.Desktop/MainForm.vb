@@ -117,6 +117,9 @@ Public Class MainForm
         AddNavigationButton("Inventory", "/api/v1/inventory/balances")
         AddNavigationButton("Purchase Orders", "/api/v1/purchase-orders")
         AddNavigationButton("Invoices", "/api/v1/invoices")
+        AddNavigationButton("Service Contracts", "/api/v1/service-contracts")
+        AddNavigationButton("Work Orders", "/api/v1/work-orders")
+        AddNavigationButton("Projects", "/api/v1/projects")
 
         Controls.Add(navigationPanel)
     End Sub
@@ -179,6 +182,9 @@ Public Class MainForm
         table.Rows.Add("Inventory", "Ready", "GET /api/v1/inventory/balances")
         table.Rows.Add("Purchase Orders", "Ready", "GET /api/v1/purchase-orders")
         table.Rows.Add("Invoices", "Ready", "GET /api/v1/invoices")
+        table.Rows.Add("Service Contracts", "Ready", "GET /api/v1/service-contracts")
+        table.Rows.Add("Work Orders", "Ready", "GET /api/v1/work-orders")
+        table.Rows.Add("Projects", "Ready", "GET /api/v1/projects")
         grid.DataSource = table
     End Sub
 
@@ -276,6 +282,27 @@ Public Class MainForm
                 table.Columns.Add("Currency")
                 table.Columns.Add("Total")
                 table.Columns.Add("Paid")
+            Case "/api/v1/service-contracts"
+                table.Columns.Add("Number")
+                table.Columns.Add("Customer ID")
+                table.Columns.Add("Status")
+                table.Columns.Add("Starts On")
+                table.Columns.Add("Ends On")
+                table.Columns.Add("Visits / Week")
+            Case "/api/v1/work-orders"
+                table.Columns.Add("Number")
+                table.Columns.Add("Customer ID")
+                table.Columns.Add("Contract ID")
+                table.Columns.Add("Status")
+                table.Columns.Add("Scheduled Start")
+                table.Columns.Add("Scheduled End")
+            Case "/api/v1/projects"
+                table.Columns.Add("Number")
+                table.Columns.Add("Customer ID")
+                table.Columns.Add("Name")
+                table.Columns.Add("Status")
+                table.Columns.Add("Budget")
+                table.Columns.Add("Currency")
         End Select
 
         Return table
@@ -309,6 +336,12 @@ Public Class MainForm
                     arrayProperty = "purchaseOrders"
                 Case "/api/v1/invoices"
                     arrayProperty = "invoices"
+                Case "/api/v1/service-contracts"
+                    arrayProperty = "serviceContracts"
+                Case "/api/v1/work-orders"
+                    arrayProperty = "workOrders"
+                Case "/api/v1/projects"
+                    arrayProperty = "projects"
                 Case Else
                     Return
             End Select
@@ -340,6 +373,12 @@ Public Class MainForm
                         table.Rows.Add(GetString(record, "number"), GetString(record, "supplierId"), GetString(record, "status"), GetString(record, "currencyCode"), GetString(record, "total"))
                     Case "/api/v1/invoices"
                         table.Rows.Add(GetString(record, "number"), GetString(record, "customerId"), GetString(record, "status"), GetString(record, "currencyCode"), GetString(record, "total"), GetString(record, "paidAmount"))
+                    Case "/api/v1/service-contracts"
+                        table.Rows.Add(GetString(record, "number"), GetString(record, "customerId"), GetString(record, "status"), GetString(record, "startsOn"), GetString(record, "endsOn"), GetString(record, "visitFrequencyPerWeek"))
+                    Case "/api/v1/work-orders"
+                        table.Rows.Add(GetString(record, "number"), GetString(record, "customerId"), GetString(record, "serviceContractId"), GetString(record, "status"), GetString(record, "scheduledStartUtc"), GetString(record, "scheduledEndUtc"))
+                    Case "/api/v1/projects"
+                        table.Rows.Add(GetString(record, "number"), GetString(record, "customerId"), GetString(record, "name"), GetString(record, "status"), GetString(record, "budgetAmount"), GetString(record, "currencyCode"))
                 End Select
             Next
         End Using
