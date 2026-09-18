@@ -102,7 +102,7 @@ public static class PurchasingEndpoints
         {
             if (request.WarehouseId == Guid.Empty) return Results.BadRequest(new { error = "WarehouseId is required." });
             if (request.Lines is null || request.Lines.Count == 0) return Results.BadRequest(new { error = "At least one receipt line is required." });
-            if (request.Lines.Any(x => x.PurchaseOrderLineId == Guid.Empty || x.Quantity <= 0D))
+            if (request.Lines.Any(x => x.PurchaseOrderLineId == Guid.Empty || x.Quantity <= 0m))
                 return Results.BadRequest(new { error = "Each receipt line requires a valid line ID and a quantity greater than zero." });
 
             if (request.Lines.GroupBy(x => x.PurchaseOrderLineId).Any(g => g.Count() > 1))
@@ -140,7 +140,7 @@ public static class PurchasingEndpoints
                 var orderLine = order.Lines.FirstOrDefault(x => x.Id == requestLine.PurchaseOrderLineId);
                 if (orderLine is null) return Results.BadRequest(new { error = "A receipt line does not belong to this purchase order." });
 
-                var alreadyReceived = existingReceiptQty.TryGetValue(orderLine.Id, out var received) ? received : 0D;
+                var alreadyReceived = existingReceiptQty.TryGetValue(orderLine.Id, out var received) ? received : 0m;
                 if (alreadyReceived + requestLine.Quantity > orderLine.OrderedQuantity)
                     return Results.Conflict(new { error = $"Receipt quantity exceeds ordered quantity for line {orderLine.Id}." });
 
@@ -177,7 +177,7 @@ public static class PurchasingEndpoints
                 .ToDictionaryAsync(x => x.LineId, x => x.Quantity, ct);
 
             var fullyReceived = order.Lines.All(x => receivedByLine.TryGetValue(x.Id, out var received) && received >= x.OrderedQuantity);
-            var partiallyReceived = order.Lines.Any(x => receivedByLine.TryGetValue(x.Id, out var received) && received > 0D);
+            var partiallyReceived = order.Lines.Any(x => receivedByLine.TryGetValue(x.Id, out var received) && received > 0m);
 
             order.Status = fullyReceived ? PurchaseOrderStatus.FullyReceived : partiallyReceived ? PurchaseOrderStatus.PartiallyReceived : PurchaseOrderStatus.Confirmed;
             await db.SaveChangesAsync(ct);
